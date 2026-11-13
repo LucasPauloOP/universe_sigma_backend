@@ -1,10 +1,26 @@
 const prisma = require('../config/database');
 const HttpError = require('../utils/httpError');
 const { makeCrud } = require('../utils/crud');
+const card = require('../services/cardService');
 
 // create => { create: [...] } | update => substitui a lista inteira
 const setMany = (mode, items) =>
   mode === 'create' ? { create: items } : { deleteMany: {}, create: items };
+
+// Valida participantes e monta a escrita aninhada de um segmento.
+const segmentToData = ({ participants, ...rest }, mode) => {
+  if (participants) {
+    const seen = new Set();
+    for (const p of participants) {
+      if (seen.has(p.wrestlerId)) {
+        throw new HttpError(400, 'Lutador repetido no mesmo segmento');
+      }
+      seen.add(p.wrestlerId);
+    }
+    rest.participants = setMany(mode, participants);
+  }
+  return rest;
+};
 
 const simple = (model, extra = {}) =>
   makeCrud({ model, hasUniverseId: true, orderBy: { name: 'asc' }, ...extra });
@@ -132,28 +148,13 @@ const resources = {
         ids: (b.participants || []).map((p) => p.wrestlerId),
       },
     ],
-    toData: ({ participants, ...rest }, mode) => {
-      if (participants) {
-        const seen = new Set();
-        for (const p of participants) {
-          if (seen.has(p.wrestlerId)) {
-            throw new HttpError(400, 'Lutador repetido no mesmo segmento');
-          }
-          seen.add(p.wrestlerId);
-        }
-        rest.participants = setMany(mode, participants);
-      }
-      return rest;
-    },
-    // Sem posição informada, entra no fim do card.
-    beforeWrite: async (data, { mode }) => {
-      if (mode === 'create' && !data.position) {
-        const last = await prisma.segment.aggregate({
-          where: { episodeId: data.episodeId },
-          _max: { position: true },
-        });
-        data.position = (last._max.position || 0) + 1;
-      }
+    toData: segmentToData,
+    // Ordem livre e main event único: ver services/cardService.js
+    persist: {
+      create: (data, include) => card.createSegment(data, include),
+      update: (id, data, current, include) =>
+        card.updateSegment(id, data, current, include),
+      remove: (current) => card.removeSegment(current),
     },
   }),
 
@@ -246,3 +247,4 @@ resources.tournamentMatch = makeCrud({
 });
 
 module.exports = resources;
+module.exports.segmentToData = segmentToData;

@@ -232,6 +232,174 @@ describe('Roster, card e torneio', () => {
   });
 });
 
+describe('Card: ordem livre e main event único', () => {
+  const w = {};
+  let ep;
+  const cardOf = async () =>
+    (await request(app).get(`${base()}/episodes/${ep}/card`).set(authA())).body
+      .segments;
+  const summary = (segs) =>
+    segs.map((s) => `${s.position}:${s.notes}${s.isMainEvent ? '*' : ''}`);
+
+  it('monta o card inteiro na ordem do array, com o main event no fim', async () => {
+    for (const name of [
+      'AJ Styles',
+      'Roman Reigns',
+      'Carmelo Hayes',
+      'John Cena',
+      'CM Punk',
+    ]) {
+      w[name] = (
+        await prisma.wrestler.findFirst({ where: { universeId: uniA, name } })
+      ).id;
+    }
+    const title = (await request(app).get(`${base()}/titles`).set(authA())).body
+      .data[0];
+    const singles = (
+      await request(app).get(`${base()}/match-types`).set(authA())
+    ).body.data.find((m) => m.name === 'Singles');
+    const show = (
+      await request(app).get(`${base()}/shows`).set(authA())
+    ).body.data.find((s) => s.name === 'SmackDown');
+    ep = (
+      await request(app)
+        .get(`${base()}/episodes?showId=${show.id}&month=2&week=1`)
+        .set(authA())
+    ).body.data[0].id;
+
+    const res = await request(app)
+      .post(`${base()}/episodes/${ep}/segments`)
+      .set(authA())
+      .send({
+        segments: [
+          {
+            type: 'MATCH',
+            matchTypeId: singles.id,
+            notes: 'AJ x Roman',
+            participants: [
+              { wrestlerId: w['AJ Styles'], side: 1 },
+              { wrestlerId: w['Roman Reigns'], side: 2 },
+            ],
+          },
+          {
+            type: 'PROMO',
+            notes: 'Promo Carmelo',
+            participants: [{ wrestlerId: w['Carmelo Hayes'] }],
+          },
+          {
+            type: 'MATCH',
+            matchTypeId: singles.id,
+            titleId: title.id,
+            isMainEvent: true,
+            notes: 'Cena x Punk',
+            participants: [
+              { wrestlerId: w['John Cena'], side: 1 },
+              { wrestlerId: w['CM Punk'], side: 2 },
+            ],
+          },
+        ],
+      });
+    expect(res.statusCode).toBe(201);
+    expect(summary(await cardOf())).toEqual([
+      '1:AJ x Roman',
+      '2:Promo Carmelo',
+      '3:Cena x Punk*',
+    ]);
+  });
+
+  it('recusa dois main events no mesmo pedido', async () => {
+    const res = await request(app)
+      .post(`${base()}/episodes/${ep}/segments`)
+      .set(authA())
+      .send({
+        segments: [
+          { type: 'PROMO', isMainEvent: true },
+          { type: 'PROMO', isMainEvent: true },
+        ],
+      });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('novo main event tira o posto do anterior (continua só um)', async () => {
+    const res = await request(app)
+      .post(`${base()}/segments`)
+      .set(authA())
+      .send({
+        episodeId: ep,
+        type: 'PROMO',
+        notes: 'Novo main',
+        isMainEvent: true,
+      });
+    expect(res.statusCode).toBe(201);
+    const segs = await cardOf();
+    expect(segs.filter((s) => s.isMainEvent)).toHaveLength(1);
+    expect(summary(segs)).toEqual([
+      '1:AJ x Roman',
+      '2:Promo Carmelo',
+      '3:Cena x Punk',
+      '4:Novo main*',
+    ]);
+  });
+
+  it('insere numa posição empurrando os demais', async () => {
+    await request(app)
+      .post(`${base()}/segments`)
+      .set(authA())
+      .send({ episodeId: ep, type: 'PROMO', notes: 'Abertura', position: 1 });
+    expect(summary(await cardOf())).toEqual([
+      '1:Abertura',
+      '2:AJ x Roman',
+      '3:Promo Carmelo',
+      '4:Cena x Punk',
+      '5:Novo main*',
+    ]);
+  });
+
+  it('move um segmento para outra posição', async () => {
+    const segs = await cardOf();
+    const cena = segs.find((s) => s.notes === 'Cena x Punk');
+    const res = await request(app)
+      .put(`${base()}/segments/${cena.id}`)
+      .set(authA())
+      .send({ position: 2, isMainEvent: true });
+    expect(res.statusCode).toBe(200);
+    const after = await cardOf();
+    expect(summary(after)).toEqual([
+      '1:Abertura',
+      '2:Cena x Punk*',
+      '3:AJ x Roman',
+      '4:Promo Carmelo',
+      '5:Novo main',
+    ]);
+  });
+
+  it('remover fecha o buraco na numeração', async () => {
+    const abertura = (await cardOf()).find((s) => s.notes === 'Abertura');
+    expect(
+      (
+        await request(app)
+          .delete(`${base()}/segments/${abertura.id}`)
+          .set(authA())
+      ).statusCode,
+    ).toBe(204);
+    expect(summary(await cardOf())).toEqual([
+      '1:Cena x Punk*',
+      '2:AJ x Roman',
+      '3:Promo Carmelo',
+      '4:Novo main',
+    ]);
+  });
+
+  it('o banco também bloqueia dois main events no mesmo episódio', async () => {
+    await expect(
+      prisma.segment.updateMany({
+        where: { episodeId: ep },
+        data: { isMainEvent: true },
+      }),
+    ).rejects.toThrow();
+  });
+});
+
 describe('Reset do universe', () => {
   it('exige confirmação', async () => {
     const res = await request(app)

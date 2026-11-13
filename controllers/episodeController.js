@@ -3,6 +3,8 @@ const HttpError = require('../utils/httpError');
 const asyncHandler = require('../utils/asyncHandler');
 const { assertIds } = require('../utils/crud');
 const { resolveImages } = require('../services/storage');
+const card = require('../services/cardService');
+const { segmentToData } = require('./resources');
 
 // Cria os episódios que faltam: shows semanais (N semanas por mês) e PLEs
 // (um por mês, no ppvMonth). Não duplica o que já existe.
@@ -95,4 +97,42 @@ exports.reorder = asyncHandler(async (req, res) => {
     ),
   ]);
   res.json({ order });
+});
+
+// Monta o card de uma vez. Body: { replace?: boolean, segments: [...] }
+// A ordem do array é a ordem do card; no máximo um segmento com isMainEvent.
+exports.buildCard = asyncHandler(async (req, res) => {
+  const u = req.universe.id;
+  const episode = await prisma.episode.findFirst({
+    where: { id: req.params.id, show: { universeId: u } },
+  });
+  if (!episode) throw new HttpError(404, 'Registro não encontrado');
+
+  const { segments, replace } = req.body;
+  await assertIds(
+    'matchType',
+    segments.map((s) => s.matchTypeId),
+    u,
+  );
+  await assertIds(
+    'title',
+    segments.map((s) => s.titleId),
+    u,
+  );
+  await assertIds(
+    'wrestler',
+    segments.flatMap((s) => (s.participants || []).map((p) => p.wrestlerId)),
+    u,
+  );
+
+  const rows = await card.createCard(episode.id, segments, {
+    replace,
+    toData: segmentToData,
+    include: {
+      matchType: true,
+      title: true,
+      participants: { include: { wrestler: true } },
+    },
+  });
+  res.status(201).json(await resolveImages(rows));
 });

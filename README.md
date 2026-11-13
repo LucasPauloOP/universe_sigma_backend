@@ -43,7 +43,12 @@ Tudo em `/api`. Exceto `/auth/register` e `/auth/login`, envie `Authorization: B
 | `/universes/:id/{brands,wrestlers,teams,titles,title-reigns,seasons,shows,episodes,segments,match-types,alignments,divisions,weight-classes,rivalries,tournaments,tournament-entrants,tournament-matches}` | CRUD completo (GET, POST, GET/:id, PUT/PATCH/:id, DELETE/:id) |
 | `POST .../episodes/generate` | Cria os episódios que faltam (semanas/meses) de uma temporada |
 | `GET .../episodes/:id/card` | Card do episódio, ordenado |
-| `PUT .../episodes/:id/segments/order` | Reordena o card |
+| `POST .../episodes/:id/segments` | Monta o card inteiro de uma vez (`{ segments: [...], replace?: true }`), na ordem do array |
+| `POST .../segments` (com `position`) | Insere no card na posição pedida; os demais descem. Sem `position`, vai para o fim |
+| `PUT .../segments/:id` (com `position`) | Move o segmento para outra posição; `DELETE` fecha o buraco |
+| `PUT .../episodes/:id/segments/order` | Reordena o card inteiro (`{ order: [ids] }`) |
+
+Cada episódio (show ou PLE) tem **no máximo um main event** (`isMainEvent`): marcar um novo tira o posto do anterior. O banco também garante isso com um índice único parcial.
 | `GET .../tournaments/:id/bracket`, `POST .../generate-bracket` | Chave do torneio / gerar chave |
 | `GET .../wrestlers/:id/record`, `GET .../titles/:id/history` | Estatísticas calculadas |
 

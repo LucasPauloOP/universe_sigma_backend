@@ -33,6 +33,8 @@ async function assertIds(model, ids, universeId, client = prisma) {
  * @param {function} o.toData     (body, mode) => dados do prisma (relações aninhadas)
  * @param {function} o.beforeWrite async (data, ctx) => void
  * @param {function} o.afterWrite  async (row, ctx) => void
+ * @param {object} o.persist      substitui o create/update/remove do prisma
+ *                                ({ create(data, include), update(id, data, current, include), remove(current) })
  */
 function makeCrud(o) {
   const {
@@ -46,6 +48,7 @@ function makeCrud(o) {
     toData = (b) => b,
     beforeWrite,
     afterWrite,
+    persist = {},
   } = o;
 
   const scopeOf = (req) => scopes[model](req.universe.id);
@@ -117,7 +120,9 @@ function makeCrud(o) {
       const data = toData(req.body, 'create');
       if (hasUniverseId) data.universeId = req.universe.id;
       if (beforeWrite) await beforeWrite(data, { req, mode: 'create' });
-      const row = await prisma[model].create({ data, include });
+      const row = persist.create
+        ? await persist.create(data, include)
+        : await prisma[model].create({ data, include });
       if (afterWrite) await afterWrite(row, { req, mode: 'create' });
       res.status(201).json(await resolveImages(row));
     }),
@@ -129,18 +134,21 @@ function makeCrud(o) {
       if (beforeWrite) {
         await beforeWrite(data, { req, mode: 'update', current });
       }
-      const row = await prisma[model].update({
-        where: { id: req.params.id },
-        data,
-        include,
-      });
+      const row = persist.update
+        ? await persist.update(req.params.id, data, current, include)
+        : await prisma[model].update({
+            where: { id: req.params.id },
+            data,
+            include,
+          });
       if (afterWrite) await afterWrite(row, { req, mode: 'update', current });
       res.json(await resolveImages(row));
     }),
 
     remove: asyncHandler(async (req, res) => {
-      await findOr404(req);
-      await prisma[model].delete({ where: { id: req.params.id } });
+      const current = await findOr404(req);
+      if (persist.remove) await persist.remove(current);
+      else await prisma[model].delete({ where: { id: req.params.id } });
       res.status(204).end();
     }),
   };

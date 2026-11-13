@@ -241,4 +241,18 @@ schemas.tournamentEntrant.create = schemas.tournamentEntrant.create.xor(
   'teamId',
 );
 
+// Monta o card inteiro de um episódio: os segmentos entram na ordem do array
+// (a posição é a do array; episodeId vem da URL).
+schemas.buildCard = Joi.object({
+  replace: Joi.boolean().default(false),
+  segments: Joi.array()
+    .items(
+      schemas.segment.create.fork(['episodeId', 'position'], (s) =>
+        s.optional().strip(),
+      ),
+    )
+    .min(1)
+    .required(),
+});
+
 module.exports = schemas;
