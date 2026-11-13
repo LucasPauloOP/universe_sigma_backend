@@ -33,6 +33,8 @@ async function assertIds(model, ids, universeId, client = prisma) {
  * @param {function} o.toData     (body, mode) => dados do prisma (relações aninhadas)
  * @param {function} o.beforeWrite async (data, ctx) => void
  * @param {function} o.afterWrite  async (row, ctx) => void
+
+ * @param {function} o.decorate   (row) => row com campos calculados na resposta
  * @param {object} o.persist      substitui o create/update/remove do prisma
  *                                ({ create(data, include), update(id, data, current, include), remove(current) })
  */
@@ -49,6 +51,7 @@ function makeCrud(o) {
     beforeWrite,
     afterWrite,
     persist = {},
+    decorate = (row) => row,
   } = o;
 
   const scopeOf = (req) => scopes[model](req.universe.id);
@@ -104,7 +107,7 @@ function makeCrud(o) {
         prisma[model].count({ where }),
       ]);
       res.json({
-        data: await resolveImages(data),
+        data: await resolveImages(data.map(decorate)),
         total,
         limit: take,
         offset: skip,
@@ -112,7 +115,7 @@ function makeCrud(o) {
     }),
 
     get: asyncHandler(async (req, res) => {
-      res.json(await resolveImages(await findOr404(req)));
+      res.json(await resolveImages(decorate(await findOr404(req))));
     }),
 
     create: asyncHandler(async (req, res) => {
@@ -124,7 +127,7 @@ function makeCrud(o) {
         ? await persist.create(data, include)
         : await prisma[model].create({ data, include });
       if (afterWrite) await afterWrite(row, { req, mode: 'create' });
-      res.status(201).json(await resolveImages(row));
+      res.status(201).json(await resolveImages(decorate(row)));
     }),
 
     update: asyncHandler(async (req, res) => {
@@ -142,7 +145,7 @@ function makeCrud(o) {
             include,
           });
       if (afterWrite) await afterWrite(row, { req, mode: 'update', current });
-      res.json(await resolveImages(row));
+      res.json(await resolveImages(decorate(row)));
     }),
 
     remove: asyncHandler(async (req, res) => {

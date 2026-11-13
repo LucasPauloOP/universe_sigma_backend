@@ -1,8 +1,14 @@
 const prisma = require('../config/database');
 const HttpError = require('../utils/httpError');
 const asyncHandler = require('../utils/asyncHandler');
-
-const DAY = 24 * 60 * 60 * 1000;
+const { resolveImages } = require('../services/storage');
+const { buildTitleStats } = require('../services/titleStats');
+const { gameDaysBetween } = require('../services/timeline');
+const {
+  universeNow,
+  episodeInclude,
+  dateOf,
+} = require('../services/universeClock');
 
 // Vitórias/derrotas/empates calculados a partir das lutas já realizadas.
 exports.wrestlerRecord = asyncHandler(async (req, res) => {
@@ -24,7 +30,7 @@ exports.wrestlerRecord = asyncHandler(async (req, res) => {
   let draws = 0;
   for (const r of rows) {
     const anyWinner = r.segment.participants.some((p) => p.isWinner);
-    if (!anyWinner) draws++;
+    if (r.segment.isDraw || !anyWinner) draws++;
     else if (r.isWinner) wins++;
     else losses++;
   }
@@ -58,24 +64,52 @@ exports.titleHistory = asyncHandler(async (req, res) => {
       titleId: title.id,
       isDone: true,
       titleChanged: false,
-      episode: { airDate: { not: null } },
     },
-    include: { episode: { select: { airDate: true } } },
+    include: { episode: { include: episodeInclude } },
   });
 
-  const now = Date.now();
+  // Reinado em aberto conta até "hoje" no universe (último episódio realizado).
+  const now = (await universeNow(req.universe.id))?.getTime() ?? Date.now();
   res.json({
     title,
     reigns: reigns.map((r) => {
       const end = r.endDate ? r.endDate.getTime() : now;
       return {
         ...r,
-        days: Math.max(0, Math.floor((end - r.startDate.getTime()) / DAY)),
+        days: gameDaysBetween(r.startDate, new Date(end)),
         defenses: defenses.filter((d) => {
-          const t = d.episode.airDate.getTime();
+          const t = dateOf(d.episode).getTime();
           return t >= r.startDate.getTime() && t <= end;
         }).length,
       };
     }),
   });
+});
+
+// Estatísticas de reinados de todos os títulos: histórico anterior (baseline) +
+// reinados do universe. Reinados em aberto contam até a data do último episódio
+// realizado (linha do tempo do universe), e não até o dia de hoje.
+exports.titleStats = asyncHandler(async (req, res) => {
+  const universeId = req.universe.id;
+  const [titles, reigns, baselines, clock] = await Promise.all([
+    prisma.title.findMany({ where: { universeId } }),
+    prisma.titleReign.findMany({
+      where: { title: { universeId } },
+      include: { holders: { include: { wrestler: true, team: true } } },
+    }),
+    prisma.titleBaseline.findMany({
+      where: { title: { universeId } },
+      include: { wrestler: true, team: true },
+    }),
+    universeNow(universeId),
+  ]);
+
+  // Sem episódio realizado com data: usa o fim do reinado mais recente, ou hoje.
+  const latestReignDate = reigns
+    .map((r) => r.endDate ?? r.startDate)
+    .sort((a, b) => b - a)[0];
+  const asOf = clock ?? latestReignDate ?? new Date();
+
+  const stats = buildTitleStats({ asOf, titles, reigns, baselines });
+  res.json(await resolveImages(JSON.parse(JSON.stringify(stats))));
 });

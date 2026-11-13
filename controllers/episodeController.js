@@ -5,6 +5,9 @@ const { assertIds } = require('../utils/crud');
 const { resolveImages } = require('../services/storage');
 const card = require('../services/cardService');
 const { segmentToData } = require('./resources');
+const { monthsFrom, missingNights } = require('../services/seasonCalendar');
+const { episodeDate } = require('../services/timeline');
+const { resultProblem } = require('../services/segmentResult');
 
 // Cria os episódios que faltam: shows semanais (N semanas por mês) e PLEs
 // (um por mês, no ppvMonth). Não duplica o que já existe.
@@ -12,20 +15,45 @@ exports.generate = asyncHandler(async (req, res) => {
   const { seasonId, showIds, months, weeks } = req.body;
   const u = req.universe.id;
   await assertIds('season', [seasonId], u);
+  const season = await prisma.season.findUnique({ where: { id: seasonId } });
   if (showIds) await assertIds('show', showIds, u);
 
+  // Shows desativados (ou de brand desativada) não ganham episódios.
   const shows = await prisma.show.findMany({
-    where: { universeId: u, ...(showIds ? { id: { in: showIds } } : {}) },
+    where: {
+      universeId: u,
+      isActive: true,
+      OR: [{ brandId: null }, { brand: { isActive: true } }],
+      ...(showIds ? { id: { in: showIds } } : {}),
+    },
   });
-  const monthList = months || Array.from({ length: 12 }, (_, i) => i + 1);
+  // Sem meses informados: do mês em que o universe começa nesta temporada até abril.
+  const monthList = months || monthsFrom(season.startMonth);
 
   const existing = await prisma.episode.findMany({
     where: { seasonId, showId: { in: shows.map((s) => s.id) } },
-    select: { showId: true, month: true, week: true },
+    select: { showId: true, month: true, week: true, night: true },
   });
   const has = new Set(
     existing.map((e) => `${e.showId}:${e.month}:${e.week ?? 0}`),
   );
+
+  // PLE que passou a ter duas noites: o episódio que já existia vira a Noite 1.
+  const twoNights = shows.filter((x) => x.kind !== 'WEEKLY' && x.nights > 1);
+  if (twoNights.length) {
+    await prisma.episode.updateMany({
+      where: {
+        seasonId,
+        night: null,
+        showId: { in: twoNights.map((x) => x.id) },
+      },
+      data: { night: 1 },
+    });
+    existing.forEach((e) => {
+      if (e.night == null && twoNights.some((x) => x.id === e.showId))
+        e.night = 1;
+    });
+  }
 
   const data = [];
   for (const show of shows) {
@@ -41,8 +69,23 @@ exports.generate = asyncHandler(async (req, res) => {
             title: `${show.name} - Semana ${week}`,
           });
         }
-      } else if (show.ppvMonth === month && !has.has(`${show.id}:${month}:0`)) {
-        data.push({ showId: show.id, seasonId, month, title: show.name });
+      } else if (show.ppvMonth === month) {
+        // PLE/especial: um episódio por noite (Noite 1 / Noite 2), em qualquer semana
+        // já cadastrada (não duplica ao definir a semana depois).
+        const nights = show.nights ?? 1;
+        const present = existing
+          .filter((e) => e.showId === show.id && e.month === month)
+          .map((e) => e.night);
+        for (const night of missingNights(nights, present)) {
+          data.push({
+            showId: show.id,
+            seasonId,
+            month,
+            week: show.ppvWeek ?? null,
+            night: nights > 1 ? night : null,
+            title: nights > 1 ? `${show.name} - Noite ${night}` : show.name,
+          });
+        }
       }
     }
   }
@@ -56,18 +99,26 @@ exports.card = asyncHandler(async (req, res) => {
     where: { id: req.params.id, show: { universeId: req.universe.id } },
     include: {
       show: true,
+      season: { select: { number: true, startDate: true } },
       segments: {
         orderBy: { position: 'asc' },
         include: {
           matchType: true,
           title: true,
+          cardDivision: true,
+          tournamentMatch: { include: { tournament: true } },
           participants: { include: { wrestler: true } },
         },
       },
     },
   });
   if (!episode) throw new HttpError(404, 'Registro não encontrado');
-  res.json(await resolveImages(episode));
+  res.json(
+    await resolveImages({
+      ...episode,
+      date: episodeDate(episode, episode.season),
+    }),
+  );
 });
 
 // Reordena o card: body { order: [idSegmento1, idSegmento2, ...] }
@@ -109,6 +160,15 @@ exports.buildCard = asyncHandler(async (req, res) => {
   if (!episode) throw new HttpError(404, 'Registro não encontrado');
 
   const { segments, replace } = req.body;
+  for (const seg of segments) {
+    const problem = resultProblem(seg);
+    if (problem) throw new HttpError(400, problem);
+  }
+  await assertIds(
+    'cardDivision',
+    segments.map((s) => s.cardDivisionId),
+    u,
+  );
   await assertIds(
     'matchType',
     segments.map((s) => s.matchTypeId),

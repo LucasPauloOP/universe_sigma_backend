@@ -57,6 +57,13 @@ enum SegmentType {
   OTHER // entrada, vídeo, ataque pós-luta etc.
 }
 
+// O que está em jogo numa luta, além do resultado em si.
+enum SegmentStakes {
+  NONE
+  RANKING // vale subida de divisão (quem está abaixo e vence sobe uma colocação)
+  CONTENDER // define o desafiante: o vencedor vai para a 1ª posição da divisão
+}
+
 enum FinishType {
   PINFALL
   SUBMISSION
@@ -108,6 +115,7 @@ model Universe {
   divisions    Division[]
   weightClasses WeightClass[]
   rivalries    Rivalry[]
+  cardDivisions CardDivision[]
 
   @@index([userId])
 }
@@ -123,11 +131,13 @@ model Brand {
   color      String?
   description String?
   imageUrl   String?
+  isActive   Boolean @default(true) // desativar uma brand desativa seus shows e apaga os episódios deles
 
   universe  Universe        @relation(fields: [universeId], references: [id], onDelete: Cascade)
   wrestlers WrestlerBrand[]
   titles    Title[]
   shows     Show[]
+  divisionLinks CardDivisionBrand[]
 
   @@unique([universeId, name])
 }
@@ -160,8 +170,10 @@ model Wrestler {
   teams        TeamMember[]
   participants SegmentParticipant[]
   reigns       ReignHolder[]
+  baselines    TitleBaseline[]
   entries      TournamentEntrant[]
   rivalries    RivalryMember[]
+  divisionEntries CardDivisionEntry[]
   alignment    Alignment?   @relation(fields: [alignmentId], references: [id], onDelete: SetNull)
   division     Division?    @relation(fields: [divisionId], references: [id], onDelete: SetNull)
   weightClass  WeightClass? @relation(fields: [weightClassId], references: [id], onDelete: SetNull)
@@ -189,9 +201,11 @@ model Team {
   imageUrl   String?
 
   universe Universe            @relation(fields: [universeId], references: [id], onDelete: Cascade)
-  members  TeamMember[]
-  entries  TournamentEntrant[]
-  reigns   ReignHolder[]
+  members   TeamMember[]
+  entries   TournamentEntrant[]
+  reigns    ReignHolder[]
+  baselines TitleBaseline[]
+  divisionEntries CardDivisionEntry[]
 
   @@unique([universeId, name])
 }
@@ -220,8 +234,10 @@ model Title {
 
   universe Universe     @relation(fields: [universeId], references: [id], onDelete: Cascade)
   brand    Brand?       @relation(fields: [brandId], references: [id], onDelete: SetNull)
-  reigns   TitleReign[]
-  segments Segment[]
+  reigns    TitleReign[]
+  baselines TitleBaseline[]
+  segments  Segment[]
+  cardDivisions CardDivision[]
 
   @@unique([universeId, name])
 }
@@ -253,6 +269,26 @@ model ReignHolder {
   @@index([reignId])
 }
 
+// Histórico ANTES do universe, sem datas: "John Cena, WWE Championship: 16 reinados,
+// 1.254 dias". Os reinados registrados no universe somam por cima (16 -> 17).
+model TitleBaseline {
+  id         String  @id @default(uuid())
+  titleId    String
+  wrestlerId String?
+  teamId     String?
+  reigns     Int     @default(0)
+  days       Int     @default(0)
+  note       String?
+
+  title    Title     @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  wrestler Wrestler? @relation(fields: [wrestlerId], references: [id], onDelete: Cascade)
+  team     Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([titleId, wrestlerId])
+  @@unique([titleId, teamId])
+  @@index([titleId])
+}
+
 // ───────────── Shows, temporadas e cards ─────────────
 
 // Temporada (a planilha tem "Season 1 Statistics")
@@ -262,6 +298,7 @@ model Season {
   number     Int
   name       String?
   startDate  DateTime?
+  startMonth Int? // 1..12: mês (da temporada maio→abril) em que o universe começa; vazio = maio
 
   universe    Universe     @relation(fields: [universeId], references: [id], onDelete: Cascade)
   episodes    Episode[]
@@ -279,7 +316,10 @@ model Show {
   kind       ShowKind
   weekday    Int? // 0=domingo ... 6=sábado (shows semanais)
   ppvMonth   Int? // 1..12 (PLEs, como na aba "Match Cards")
+  ppvWeek    Int? // 1..5: semana do mês em que o PLE/especial acontece
+  nights     Int      @default(1) // 1 ou 2: PLE em duas noites (cada noite é um episódio com seu card)
   imageUrl   String?
+  isActive   Boolean  @default(true) // desativar apaga todos os episódios do show
 
   universe Universe  @relation(fields: [universeId], references: [id], onDelete: Cascade)
   brand    Brand?    @relation(fields: [brandId], references: [id], onDelete: SetNull)
@@ -296,7 +336,8 @@ model Episode {
   title    String? // ex.: "RAW #3"
   month    Int // 1..12
   week     Int? // 1..4
-  airDate  DateTime?
+  night    Int? // 1 ou 2, só em PLEs de duas noites (Noite 1 / Noite 2)
+  airDate  DateTime? // opcional: sem data, a linha do tempo usa mês + semana
   status   EpisodeStatus @default(PLANNED)
   imageUrl String?
   notes    String?
@@ -317,6 +358,7 @@ model MatchType {
 
   universe Universe  @relation(fields: [universeId], references: [id], onDelete: Cascade)
   segments Segment[]
+  tournamentMatches TournamentMatch[]
 
   @@unique([universeId, name])
 }
@@ -333,11 +375,16 @@ model Segment {
   isMainEvent  Boolean     @default(false)
   finishType   FinishType? // como terminou (alimenta as estatísticas)
   isDone       Boolean     @default(false)
+  isDraw       Boolean     @default(false) // empate: sem vencedor (a luta realizada tem vencedor OU empate)
   notes        String? // observação da luta/promo
+  cardDivisionId String? // divisão afetada por esta luta (quando stakes != NONE)
+  stakes       SegmentStakes @default(NONE)
+  rankingApplied Boolean   @default(false) // o resultado já mexeu no ranking (aplica uma vez só)
 
   episode         Episode              @relation(fields: [episodeId], references: [id], onDelete: Cascade)
   matchType       MatchType?           @relation(fields: [matchTypeId], references: [id], onDelete: SetNull)
   title           Title?               @relation(fields: [titleId], references: [id], onDelete: SetNull)
+  cardDivision    CardDivision?        @relation(fields: [cardDivisionId], references: [id], onDelete: SetNull)
   participants    SegmentParticipant[]
   tournamentMatch TournamentMatch?
 
@@ -395,6 +442,7 @@ model TournamentEntrant {
   asA  TournamentMatch[] @relation("EntrantA")
   asB  TournamentMatch[] @relation("EntrantB")
   wins TournamentMatch[] @relation("EntrantWinner")
+  extraIn TournamentMatchEntrant[]
 
   @@index([tournamentId])
 }
@@ -411,14 +459,30 @@ model TournamentMatch {
   entrantBId   String?
   winnerId     String?
   segmentId    String? @unique // luta real que decide essa vaga
+  matchTypeId  String? // tipo de luta/estipulação DESTA luta (Singles, Triple Threat, Hell in a Cell...)
 
   tournament Tournament         @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   entrantA   TournamentEntrant? @relation("EntrantA", fields: [entrantAId], references: [id], onDelete: SetNull)
   entrantB   TournamentEntrant? @relation("EntrantB", fields: [entrantBId], references: [id], onDelete: SetNull)
   winner     TournamentEntrant? @relation("EntrantWinner", fields: [winnerId], references: [id], onDelete: SetNull)
   segment    Segment?           @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  matchType  MatchType?         @relation(fields: [matchTypeId], references: [id], onDelete: SetNull)
+  // 3º, 4º... competidores (além de A e B): triple threat, fatal 4-way...
+  extras     TournamentMatchEntrant[]
 
   @@unique([tournamentId, round, slot])
+}
+
+// Competidor adicional de uma luta do torneio. Só UM vence e avança na chave.
+model TournamentMatchEntrant {
+  matchId   String
+  entrantId String
+  position  Int // ordem: 1 = 3º competidor, 2 = 4º...
+
+  match   TournamentMatch   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  entrant TournamentEntrant @relation(fields: [entrantId], references: [id], onDelete: Cascade)
+
+  @@id([matchId, entrantId])
 }
 
 // ───────────── Tabelas de apoio do roster ─────────────
@@ -463,6 +527,58 @@ model WeightClass {
   wrestlers Wrestler[]
 
   @@unique([universeId, name])
+}
+
+// ───────────── Divisões de card (ranking) ─────────────
+
+// Main Card, Mid Card, Tag Team, Lendas... Cada uma disputa um título; o campeão é o do
+// reinado em aberto desse título (fica acima do ranking) e os desafiantes ficam em
+// `entries`, da posição 1 (próximo desafiante) para baixo.
+// Uma divisão pode pertencer a MAIS DE UMA brand (ex.: Tag Team feminino, Managers) e um
+// lutador pode estar em várias divisões. `gender` null = inter-gênero (mista).
+// Não confundir com `Division` (categoria do lutador: masculino, feminino, tag...).
+model CardDivision {
+  id         String  @id @default(uuid())
+  universeId String
+  titleId    String?
+  name       String
+  gender     Gender? // M, W ou null (inter-gênero)
+  order      Int     @default(0)
+  isActive   Boolean @default(true)
+
+  universe Universe            @relation(fields: [universeId], references: [id], onDelete: Cascade)
+  title    Title?              @relation(fields: [titleId], references: [id], onDelete: SetNull)
+  brands   CardDivisionBrand[]
+  entries  CardDivisionEntry[]
+  segments Segment[]
+
+  @@index([universeId])
+}
+
+model CardDivisionBrand {
+  divisionId String
+  brandId    String
+
+  division CardDivision @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  brand    Brand        @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@id([divisionId, brandId])
+}
+
+model CardDivisionEntry {
+  id         String  @id @default(uuid())
+  divisionId String
+  position   Int // 1 = primeiro desafiante
+  wrestlerId String?
+  teamId     String?
+
+  division CardDivision @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  wrestler Wrestler?    @relation(fields: [wrestlerId], references: [id], onDelete: Cascade)
+  team     Team?        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([divisionId, wrestlerId])
+  @@unique([divisionId, teamId])
+  @@index([divisionId, position])
 }
 
 // ───────────── Rivalidades ─────────────

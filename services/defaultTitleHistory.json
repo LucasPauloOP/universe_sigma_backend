@@ -1,0 +1,634 @@
+[
+ {
+  "title": "Men's WWE Championship",
+  "isTag": false,
+  "entries": [
+   {
+    "name": "Bruno Sammartino",
+    "reigns": 2,
+    "days": 4040,
+    "current": false
+   },
+   {
+    "name": "Hulk Hogan",
+    "reigns": 6,
+    "days": 2185,
+    "current": false
+   },
+   {
+    "name": "Bob Backlund",
+    "reigns": 2,
+    "days": 2138,
+    "current": false
+   },
+   {
+    "name": "John Cena",
+    "reigns": 14,
+    "days": 1404,
+    "current": false
+   },
+   {
+    "name": "Pedro Morales",
+    "reigns": 1,
+    "days": 1027,
+    "current": false
+   },
+   {
+    "name": "Roman Reigns",
+    "reigns": 4,
+    "days": 853,
+    "current": false
+   },
+   {
+    "name": "Brock Lesnar",
+    "reigns": 7,
+    "days": 823,
+    "current": false
+   },
+   {
+    "name": "Randy Orton",
+    "reigns": 10,
+    "days": 680,
+    "current": false
+   },
+   {
+    "name": "Bret Hart",
+    "reigns": 5,
+    "days": 654,
+    "current": false
+   },
+   {
+    "name": "Triple H",
+    "reigns": 9,
+    "days": 609,
+    "current": false
+   },
+   {
+    "name": "Sami Zayn",
+    "reigns": 2,
+    "days": 63,
+    "current": true
+   }
+  ]
+ },
+ {
+  "title": "Men's World Championship",
+  "isTag": false,
+  "entries": [
+   {
+    "name": "Seth Rollins",
+    "reigns": 2,
+    "days": 395,
+    "current": false
+   },
+   {
+    "name": "Gunther",
+    "reigns": 2,
+    "days": 311,
+    "current": false
+   },
+   {
+    "name": "Roman Reigns",
+    "reigns": 1,
+    "days": 208,
+    "current": true
+   },
+   {
+    "name": "CM Punk",
+    "reigns": 2,
+    "days": 169,
+    "current": false
+   },
+   {
+    "name": "Damian Priest",
+    "reigns": 1,
+    "days": 118,
+    "current": false
+   },
+   {
+    "name": "Jey Uso",
+    "reigns": 1,
+    "days": 51,
+    "current": false
+   },
+   {
+    "name": "Drew McIntyre",
+    "reigns": 1,
+    "days": 1,
+    "current": false
+   }
+  ]
+ },
+ {
+  "title": "Women's WWE Championship",
+  "isTag": false,
+  "entries": [
+   {
+    "name": "Becky Lynch",
+    "reigns": 2,
+    "days": 555,
+    "current": false
+   },
+   {
+    "name": "Bianca Belair",
+    "reigns": 2,
+    "days": 425,
+    "current": false
+   },
+   {
+    "name": "Ronda Rousey",
+    "reigns": 1,
+    "days": 231,
+    "current": false
+   },
+   {
+    "name": "Alexa Bliss",
+    "reigns": 3,
+    "days": 398,
+    "current": false
+   },
+   {
+    "name": "Charlotte Flair",
+    "reigns": 6,
+    "days": 305,
+    "current": false
+   },
+   {
+    "name": "Asuka",
+    "reigns": 3,
+    "days": 274,
+    "current": false
+   },
+   {
+    "name": "Iyo Sky",
+    "reigns": 1,
+    "days": 246,
+    "current": false
+   },
+   {
+    "name": "Bayley",
+    "reigns": 2,
+    "days": 193,
+    "current": false
+   },
+   {
+    "name": "Sasha Banks",
+    "reigns": 5,
+    "days": 116,
+    "current": false
+   },
+   {
+    "name": "Tiffany Stratton",
+    "reigns": 2,
+    "days": 263,
+    "current": true
+   }
+  ]
+ },
+ {
+  "title": "Women's World Championship",
+  "isTag": false,
+  "entries": [
+   {
+    "name": "Bayley",
+    "reigns": 2,
+    "days": 520,
+    "current": false
+   },
+   {
+    "name": "Rhea Ripley",
+    "reigns": 2,
+    "days": 436,
+    "current": false
+   },
+   {
+    "name": "Charlotte Flair",
+    "reigns": 7,
+    "days": 369,
+    "current": false
+   },
+   {
+    "name": "Liv Morgan",
+    "reigns": 4,
+    "days": 400,
+    "current": true
+   },
+   {
+    "name": "Becky Lynch",
+    "reigns": 5,
+    "days": 378,
+    "current": false
+   },
+   {
+    "name": "Bianca Belair",
+    "reigns": 1,
+    "days": 133,
+    "current": false
+   },
+   {
+    "name": "Alexa Bliss",
+    "reigns": 2,
+    "days": 110,
+    "current": false
+   },
+   {
+    "name": "Naomi",
+    "reigns": 2,
+    "days": 149,
+    "current": false
+   }
+  ]
+ },
+ {
+  "title": "Men's Intercontinental Championship",
+  "isTag": false,
+  "entries": [
+   {
+    "name": "Gunther",
+    "reigns": 1,
+    "days": 666,
+    "current": false
+   },
+   {
+    "name": "Pedro Morales",
+    "reigns": 2,
+    "days": 619,
+    "current": false
+   },
+   {
+    "name": "The Miz",
+    "reigns": 8,
+    "days": 597,
+    "current": false
+   },
+   {
+    "name": "Don Muraco",
+    "reigns": 2,
+    "days": 541,
+    "current": false
+   },
+   {
+    "name": "The Honky Tonk Man",
+    "reigns": 1,
+    "days": 454,
+    "current": false
+   },
+   {
+    "name": "Tito Santana",
+    "reigns": 2,
+    "days": 443,
+    "current": false
+   },
+   {
+    "name": "Razor Ramon",
+    "reigns": 4,
+    "days": 437,
+    "current": false
+   },
+   {
+    "name": "Ultimate Warrior",
+    "reigns": 2,
+    "days": 434,
+    "current": false
+   },
+   {
+    "name": "Randy Savage",
+    "reigns": 1,
+    "days": 414,
+    "current": false
+   },
+   {
+    "name": "Chris Jericho",
+    "reigns": 9,
+    "days": 318,
+    "current": false
+   },
+   {
+    "name": "Ethan Page",
+    "reigns": 1,
+    "days": 11,
+    "current": true
+   }
+  ]
+ },
+ {
+  "title": "Men's US Championship",
+  "isTag": false,
+  "entries": [
+   {
+    "name": "Lex Luger",
+    "reigns": 5,
+    "days": 950,
+    "current": false
+   },
+   {
+    "name": "Ric Flair",
+    "reigns": 6,
+    "days": 773,
+    "current": false
+   },
+   {
+    "name": "Rick Rude",
+    "reigns": 1,
+    "days": 378,
+    "current": false
+   },
+   {
+    "name": "Dean Ambrose",
+    "reigns": 1,
+    "days": 351,
+    "current": false
+   },
+   {
+    "name": "John Cena",
+    "reigns": 5,
+    "days": 403,
+    "current": false
+   },
+   {
+    "name": "MVP",
+    "reigns": 2,
+    "days": 419,
+    "current": false
+   },
+   {
+    "name": "Shelton Benjamin",
+    "reigns": 3,
+    "days": 392,
+    "current": false
+   },
+   {
+    "name": "Chris Benoit",
+    "reigns": 5,
+    "days": 376,
+    "current": false
+   },
+   {
+    "name": "Bobby Lashley",
+    "reigns": 3,
+    "days": 336,
+    "current": false
+   },
+   {
+    "name": "Logan Paul",
+    "reigns": 1,
+    "days": 273,
+    "current": false
+   },
+   {
+    "name": "Trick Williams",
+    "reigns": 2,
+    "days": 145,
+    "current": true
+   }
+  ]
+ },
+ {
+  "title": "Women's Intercontinental Championship",
+  "isTag": false,
+  "entries": [
+   {
+    "name": "Becky Lynch",
+    "reigns": 3,
+    "days": 259,
+    "current": false
+   },
+   {
+    "name": "Lyra Valkyria",
+    "reigns": 1,
+    "days": 145,
+    "current": false
+   },
+   {
+    "name": "Raquel Rodriguez",
+    "reigns": 1,
+    "days": 109,
+    "current": true
+   },
+   {
+    "name": "Sol Ruca",
+    "reigns": 1,
+    "days": 57,
+    "current": false
+   },
+   {
+    "name": "Maxxine Dupri",
+    "reigns": 1,
+    "days": 49,
+    "current": false
+   },
+   {
+    "name": "AJ Lee",
+    "reigns": 1,
+    "days": 49,
+    "current": false
+   }
+  ]
+ },
+ {
+  "title": "Women's US Championship",
+  "isTag": false,
+  "entries": [
+   {
+    "name": "Giulia",
+    "reigns": 2,
+    "days": 245,
+    "current": false
+   },
+   {
+    "name": "Chelsea Green",
+    "reigns": 2,
+    "days": 188,
+    "current": false
+   },
+   {
+    "name": "Tiffany Stratton",
+    "reigns": 1,
+    "days": 112,
+    "current": false
+   },
+   {
+    "name": "Jacy Jayne",
+    "reigns": 1,
+    "days": 91,
+    "current": true
+   },
+   {
+    "name": "Zelina Vega",
+    "reigns": 1,
+    "days": 63,
+    "current": false
+   }
+  ]
+ },
+ {
+  "title": "World Tag Team Championship",
+  "isTag": true,
+  "entries": [
+   {
+    "name": "The New Day",
+    "reigns": 5,
+    "days": 699,
+    "current": false
+   },
+   {
+    "name": "The Usos",
+    "reigns": 3,
+    "days": 380,
+    "current": false
+   },
+   {
+    "name": "The Bar",
+    "reigns": 4,
+    "days": 297,
+    "current": false
+   },
+   {
+    "name": "The Shield",
+    "reigns": 1,
+    "days": 148,
+    "current": false
+   },
+   {
+    "name": "Paul London & Brian Kendrick",
+    "reigns": 1,
+    "days": 331,
+    "current": false,
+    "members": [
+     "Paul London",
+     "Brian Kendrick"
+    ]
+   },
+   {
+    "name": "John Morrison & The Miz",
+    "reigns": 2,
+    "days": 250,
+    "current": false,
+    "members": [
+     "John Morrison",
+     "The Miz"
+    ]
+   },
+   {
+    "name": "Penta & Je'Von Evans",
+    "reigns": 1,
+    "days": 6,
+    "current": true,
+    "members": [
+     "Penta",
+     "Je'Von Evans"
+    ]
+   }
+  ]
+ },
+ {
+  "title": "Tag Team Championship",
+  "isTag": true,
+  "entries": [
+   {
+    "name": "The Usos",
+    "reigns": 5,
+    "days": 1002,
+    "current": false
+   },
+   {
+    "name": "The New Day",
+    "reigns": 7,
+    "days": 375,
+    "current": false
+   },
+   {
+    "name": "The Street Profits",
+    "reigns": 2,
+    "days": 312,
+    "current": false
+   },
+   {
+    "name": "The Viking Raiders",
+    "reigns": 1,
+    "days": 98,
+    "current": false
+   },
+   {
+    "name": "DIY",
+    "reigns": 2,
+    "days": 115,
+    "current": false
+   },
+   {
+    "name": "The MFTs",
+    "reigns": 1,
+    "days": 45,
+    "current": true
+   }
+  ]
+ },
+ {
+  "title": "Women's Tag Team Championship",
+  "isTag": true,
+  "entries": [
+   {
+    "name": "The Kabuki Warriors",
+    "reigns": 2,
+    "days": 271,
+    "current": false
+   },
+   {
+    "name": "Liv Morgan & Raquel Rodriguez",
+    "reigns": 4,
+    "days": 215,
+    "current": false,
+    "members": [
+     "Liv Morgan",
+     "Raquel Rodriguez"
+    ]
+   },
+   {
+    "name": "Bianca Belair & Jade Cargill",
+    "reigns": 2,
+    "days": 195,
+    "current": false,
+    "members": [
+     "Bianca Belair",
+     "Jade Cargill"
+    ]
+   },
+   {
+    "name": "Nia Jax & Shayna Baszler",
+    "reigns": 2,
+    "days": 215,
+    "current": false,
+    "members": [
+     "Nia Jax",
+     "Shayna Baszler"
+    ]
+   },
+   {
+    "name": "Sasha Banks & Bayley",
+    "reigns": 2,
+    "days": 145,
+    "current": false,
+    "members": [
+     "Sasha Banks",
+     "Bayley"
+    ]
+   },
+   {
+    "name": "The IIconics",
+    "reigns": 1,
+    "days": 120,
+    "current": false
+   },
+   {
+    "name": "Michin & B-Fab",
+    "reigns": 1,
+    "days": 21,
+    "current": true,
+    "members": [
+     "Michin",
+     "B-Fab"
+    ]
+   }
+  ]
+ }
+]

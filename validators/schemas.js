@@ -74,6 +74,8 @@ const schemas = {
     color: optText(30),
     description: optText(500),
     imageUrl: url,
+    isActive: Joi.boolean(),
+    confirm: Joi.boolean(), // confirma efeitos destrutivos (desativar apaga episódios)
   }),
 
   wrestler: define({
@@ -132,10 +134,20 @@ const schemas = {
       .min(1),
   }),
 
+  titleBaseline: define({
+    titleId: id.required(),
+    wrestlerId: optId,
+    teamId: optId,
+    reigns: Joi.number().integer().min(0).max(1000).required(),
+    days: Joi.number().integer().min(0).max(1000000).required(),
+    note: optText(500),
+  }),
+
   season: define({
     number: Joi.number().integer().min(1).required(),
     name: optText(100),
     startDate: date,
+    startMonth: Joi.number().integer().min(1).max(12).allow(null),
   }),
 
   show: define({
@@ -144,7 +156,20 @@ const schemas = {
     brandId: optId,
     weekday: Joi.number().integer().min(0).max(6).allow(null),
     ppvMonth: Joi.number().integer().min(1).max(12).allow(null),
+    ppvWeek: Joi.number().integer().min(1).max(4).allow(null),
+    nights: Joi.number().integer().min(1).max(2),
     imageUrl: url,
+    isActive: Joi.boolean(),
+    confirm: Joi.boolean(),
+  }),
+
+  cardDivision: define({
+    name: text(100).required(),
+    gender: Joi.string().valid('M', 'W').allow(null), // null = inter-gênero
+    brandIds: Joi.array().items(id).unique(),
+    titleId: optId,
+    order: Joi.number().integer().min(0).max(1000),
+    isActive: Joi.boolean(),
   }),
 
   episode: define({
@@ -152,7 +177,8 @@ const schemas = {
     seasonId: id.required(),
     title: optText(150),
     month: Joi.number().integer().min(1).max(12).required(),
-    week: Joi.number().integer().min(1).max(5).allow(null),
+    week: Joi.number().integer().min(1).max(4).allow(null),
+    night: Joi.number().integer().min(1).max(2).allow(null),
     airDate: date,
     status: Joi.string().valid('PLANNED', 'DONE'),
     imageUrl: url,
@@ -163,7 +189,7 @@ const schemas = {
     seasonId: id.required(),
     showIds: Joi.array().items(id).min(1),
     months: Joi.array().items(Joi.number().integer().min(1).max(12)).min(1),
-    weeks: Joi.number().integer().min(1).max(5).default(4),
+    weeks: Joi.number().integer().min(1).max(4).default(4),
   }),
 
   matchType: define({ name: text(100).required() }),
@@ -180,7 +206,11 @@ const schemas = {
       .valid('PINFALL', 'SUBMISSION', 'COUNTOUT', 'DQ', 'OTHER')
       .allow(null),
     isDone: Joi.boolean(),
+    isDraw: Joi.boolean(),
     notes: optText(2000),
+    stakes: Joi.string().valid('NONE', 'RANKING', 'CONTENDER'),
+    cardDivisionId: optId,
+    tournamentMatchId: optId, // luta de torneio que este segmento decide
     participants: Joi.array().items(
       Joi.object({
         wrestlerId: id.required(),
@@ -221,6 +251,8 @@ const schemas = {
     groupName: optText(50),
     entrantAId: optId,
     entrantBId: optId,
+    extraEntrantIds: Joi.array().items(id).unique().max(8),
+    matchTypeId: optId,
     winnerId: optId,
     segmentId: optId,
   }),
@@ -240,6 +272,32 @@ schemas.tournamentEntrant.create = schemas.tournamentEntrant.create.xor(
   'wrestlerId',
   'teamId',
 );
+
+// Histórico: de um lutador OU de uma equipe (não os dois)
+schemas.titleBaseline.create = schemas.titleBaseline.create.xor(
+  'wrestlerId',
+  'teamId',
+);
+
+// Agenda luta(s) de torneio num episódio
+schemas.scheduleMatch = Joi.object({
+  episodeId: id.required(),
+  matchTypeId: optId,
+});
+schemas.scheduleRound = Joi.object({
+  round: Joi.number().integer().min(1).required(),
+  episodeId: id.required(),
+});
+
+// Lista ordenada de uma divisão: cada item é um lutador OU uma dupla
+schemas.divisionEntries = Joi.object({
+  entries: Joi.array()
+    .items(
+      Joi.object({ wrestlerId: id, teamId: id }).xor('wrestlerId', 'teamId'),
+    )
+    .max(300)
+    .required(),
+});
 
 // Monta o card inteiro de um episódio: os segmentos entram na ordem do array
 // (a posição é a do array; episodeId vem da URL).

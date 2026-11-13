@@ -31,6 +31,11 @@ exports.bracket = asyncHandler(async (req, res) => {
         entrantA: { include: { wrestler: true, team: true } },
         entrantB: { include: { wrestler: true, team: true } },
         winner: { include: { wrestler: true, team: true } },
+        matchType: true,
+        extras: {
+          orderBy: { position: 'asc' },
+          include: { entrant: { include: { wrestler: true, team: true } } },
+        },
         segment: { include: { episode: { include: { show: true } } } },
       },
       orderBy: [{ round: 'asc' }, { slot: 'asc' }],
@@ -47,8 +52,10 @@ exports.generateBracket = asyncHandler(async (req, res) => {
     where: { tournamentId: t.id },
     orderBy: [{ seed: 'asc' }, { id: 'asc' }],
   });
-  if (entrants.length > t.size) {
-    throw new HttpError(400, 'Há mais participantes do que vagas no torneio');
+  // Pode haver mais inscritos que vagas na rodada 1 (lutas de 3 ou mais, como triple
+  // threat): os primeiros ocupam A e B das lutas e os demais entram pela própria luta.
+  if (entrants.length > t.size * 2) {
+    throw new HttpError(400, 'Há mais participantes do que o torneio comporta');
   }
   const ids = entrants.map((e) => e.id);
 

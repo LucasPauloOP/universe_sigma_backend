@@ -4,6 +4,7 @@ const direct = (u) => ({ universeId: u });
 
 module.exports = {
   brand: direct,
+  cardDivision: direct,
   wrestler: direct,
   team: direct,
   title: direct,
@@ -18,6 +19,7 @@ module.exports = {
   episode: (u) => ({ show: { universeId: u } }),
   segment: (u) => ({ episode: { show: { universeId: u } } }),
   titleReign: (u) => ({ title: { universeId: u } }),
+  titleBaseline: (u) => ({ title: { universeId: u } }),
   tournamentEntrant: (u) => ({ tournament: { universeId: u } }),
   tournamentMatch: (u) => ({ tournament: { universeId: u } }),
 };

@@ -5,8 +5,9 @@ const BRANDS = [
   { name: 'RAW', color: '#d4161c' },
   { name: 'SmackDown', color: '#1f5fbf' },
   { name: 'NXT', color: '#f2c200' },
-  { name: 'AAA', color: '#0a8f3c' },
-  { name: 'TNA', color: '#6b2fa0' },
+  // AAA e TNA vêm desativadas: o usuário liga se for jogar com elas
+  { name: 'AAA', color: '#0a8f3c', isActive: false },
+  { name: 'TNA', color: '#6b2fa0', isActive: false },
 ];
 
 const ALIGNMENTS = ['Face', 'Heel', 'Tweener'];

@@ -1,11 +1,13 @@
 const schemas = require('../../validators/schemas');
 const validate = require('../../middleware/validate');
 const episodes = require('../../controllers/episodeController');
+const activation = require('../../controllers/activationController');
 const { scopedRouter, crudRoutes } = require('../crud');
 
 const router = scopedRouter();
 
 crudRoutes(router, '/seasons', 'season');
+router.get('/shows/:id/impact', activation.show);
 crudRoutes(router, '/shows', 'show');
 crudRoutes(router, '/match-types', 'matchType');
 
