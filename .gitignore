@@ -4,3 +4,6 @@ development.env
 package-lock.json
 node_modules
 test.env
+.neon
+.env.local
+.claude
