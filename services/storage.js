@@ -42,6 +42,23 @@ async function uploadImage(universeId, buffer, contentType) {
   return { key, ref: PREFIX + key };
 }
 
+// URL assinada do nosso bucket -> "storage:<chave>" (ex.: copiar a imagem de
+// outro registro). Qualquer outra URL passa sem alteração.
+function toStorageRef(url) {
+  if (typeof url !== 'string' || !/^https?:\/\//.test(url)) return url;
+  try {
+    const { pathname, searchParams } = new URL(url);
+    if (!searchParams.has('X-Amz-Signature')) return url;
+    const path = decodeURIComponent(pathname).replace(/^\//, '');
+    const key = path.startsWith(`${BUCKET}/`)
+      ? path.slice(BUCKET.length + 1)
+      : path;
+    return PREFIX + key;
+  } catch {
+    return url;
+  }
+}
+
 const presign = (key) =>
   getSignedUrl(s3(), new GetObjectCommand({ Bucket: BUCKET, Key: key }), {
     expiresIn: EXPIRES_IN,
@@ -74,6 +91,7 @@ module.exports = {
   PREFIX,
   EXT,
   isStorageRef,
+  toStorageRef,
   uploadImage,
   presign,
   remove,

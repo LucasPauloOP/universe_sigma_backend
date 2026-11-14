@@ -2,7 +2,12 @@ const prisma = require('../config/database');
 const HttpError = require('./httpError');
 const asyncHandler = require('./asyncHandler');
 const scopes = require('./scopes');
-const { resolveImages, isStorageRef, PREFIX } = require('../services/storage');
+const {
+  resolveImages,
+  isStorageRef,
+  toStorageRef,
+  PREFIX,
+} = require('../services/storage');
 
 const unique = (arr) => [...new Set(arr.filter(Boolean))];
 
@@ -58,6 +63,8 @@ function makeCrud(o) {
 
   const validateRefs = async (req, body) => {
     const u = req.universe.id;
+    // URL assinada (ex.: imagem copiada do show) volta a ser a chave do storage.
+    if (body.imageUrl) body.imageUrl = toStorageRef(body.imageUrl);
     // Só aceita arquivos enviados para ESTE universe.
     if (
       isStorageRef(body.imageUrl) &&
