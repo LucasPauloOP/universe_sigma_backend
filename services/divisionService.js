@@ -246,7 +246,88 @@ function assertBody(items) {
   }
 }
 
+const holderKey = (h) => (h.wrestlerId ? wKey(h.wrestlerId) : tKey(h.teamId));
+
+/**
+ * Define o campeão do título de uma divisão.
+ *  - 'fix': corrige o campeão atual (troca os holders do reinado aberto; sem reinado novo).
+ *  - 'change': troca de título de verdade (fecha o reinado e abre outro na data atual do universe).
+ * holders vazio = título vago. Atualiza as filas das divisões que disputam o título.
+ */
+async function setChampion(universeId, division, { mode, holders }) {
+  const title = await prisma.title.findUnique({
+    where: { id: division.titleId },
+  });
+  const wrestlers = holders.filter((h) => h.wrestlerId);
+  const teams = holders.filter((h) => h.teamId);
+  if (title.isTag) {
+    const ok =
+      (teams.length === 1 && !wrestlers.length) ||
+      (!teams.length && wrestlers.length === 2);
+    if (holders.length && !ok)
+      throw new HttpError(
+        422,
+        'Título de duplas: escolha 1 dupla ou 2 lutadores',
+      );
+  } else if (holders.length && !(wrestlers.length === 1 && !teams.length)) {
+    throw new HttpError(422, 'Título individual: escolha 1 lutador');
+  }
+
+  const { universeNow } = require('./universeClock');
+  const now = (await universeNow(universeId)) ?? new Date();
+  const prev = await prisma.titleReign.findFirst({
+    where: { titleId: title.id, endDate: null },
+    include: { holders: true },
+  });
+  const prevHolders = (prev?.holders ?? []).map((h) => ({
+    wrestlerId: h.wrestlerId,
+    teamId: h.teamId,
+  }));
+  const same =
+    prevHolders.length === holders.length &&
+    prevHolders.every((p) =>
+      holders.some((h) => holderKey(h) === holderKey(p)),
+    );
+  if (same) return { changed: false };
+
+  const data = holders.map((h) => ({
+    wrestlerId: h.wrestlerId ?? null,
+    teamId: h.teamId ?? null,
+  }));
+  await prisma.$transaction(async (tx) => {
+    if (mode === 'fix' && prev) {
+      await tx.reignHolder.deleteMany({ where: { reignId: prev.id } });
+      if (data.length)
+        await tx.reignHolder.createMany({
+          data: data.map((d) => ({ ...d, reignId: prev.id })),
+        });
+      return;
+    }
+    if (prev) {
+      const end = now < prev.startDate ? prev.startDate : now;
+      await tx.titleReign.update({
+        where: { id: prev.id },
+        data: { endDate: end },
+      });
+    }
+    if (data.length) {
+      await tx.titleReign.create({
+        data: { titleId: title.id, startDate: now, holders: { create: data } },
+      });
+    }
+  });
+
+  await applyTitleChangeToDivisions(
+    universeId,
+    title.id,
+    mode === 'change' ? prevHolders : [],
+    data,
+  );
+  return { changed: true };
+}
+
 module.exports = {
+  setChampion,
   replaceEntries,
   applySegmentStakes,
   applyTitleChangeToDivisions,

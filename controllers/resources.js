@@ -136,8 +136,33 @@ const resources = {
   }),
 
   team: simple('team', {
-    include: { members: { include: { wrestler: true } } },
-    filters: ['kind'],
+    include: {
+      members: { include: { wrestler: true } },
+      faction: { select: { id: true, name: true } },
+      subTeams: { select: { id: true, name: true } },
+    },
+    filters: ['kind', 'factionId'],
+    refs: { factionId: 'team' },
+    // Facção só pode ser uma Team do tipo FACTION (e nunca ela mesma).
+    beforeWrite: async (data, { mode, current }) => {
+      if (!data.factionId) return;
+      if (mode === 'update' && data.factionId === current.id) {
+        throw new HttpError(422, 'Uma facção não pode estar dentro dela mesma');
+      }
+      const faction = await prisma.team.findUnique({
+        where: { id: data.factionId },
+      });
+      if (!faction || faction.kind !== 'FACTION') {
+        throw new HttpError(
+          422,
+          'A facção escolhida precisa ser do tipo Facção',
+        );
+      }
+      const kind = data.kind ?? current?.kind;
+      if (kind === 'FACTION' && faction.factionId) {
+        throw new HttpError(422, 'Facção dentro de facção não é permitido');
+      }
+    },
     nested: (b) => [{ model: 'wrestler', ids: b.memberIds || [] }],
     toData: ({ memberIds, ...rest }, mode) => {
       if (memberIds) {

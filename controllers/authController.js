@@ -52,6 +52,29 @@ exports.login = asyncHandler(async (req, res) => {
   res.json({ token: signToken(user), user: publicUser(user) });
 });
 
+// Recuperação de senha SEM e-mail (temporário): quem informar um e-mail
+// cadastrado pode definir a nova senha. Trocar por token enviado por e-mail.
+exports.forgotPassword = asyncHandler(async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { email: req.body.email.toLowerCase() },
+  });
+  if (!user) throw new HttpError(404, 'E-mail não encontrado');
+  res.json({ exists: true });
+});
+
+exports.resetPassword = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+  });
+  if (!user) throw new HttpError(404, 'E-mail não encontrado');
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash: await bcrypt.hash(password, 10) },
+  });
+  res.json({ ok: true });
+});
+
 exports.me = asyncHandler(async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.userId } });
   if (!user) throw new HttpError(401, 'Usuário não existe mais');

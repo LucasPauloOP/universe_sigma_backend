@@ -7,3 +7,4 @@ test.env
 .neon
 .env.local
 .claude
+CLAUDE.md

@@ -199,8 +199,12 @@ model Team {
   name       String
   kind       TeamKind @default(TAG_TEAM)
   imageUrl   String?
+  // Uma dupla pode fazer parte de uma facção (Creed Brothers em American Made).
+  factionId  String?
 
   universe Universe            @relation(fields: [universeId], references: [id], onDelete: Cascade)
+  faction   Team?              @relation("FactionTeams", fields: [factionId], references: [id], onDelete: SetNull)
+  subTeams  Team[]             @relation("FactionTeams")
   members   TeamMember[]
   entries   TournamentEntrant[]
   reigns    ReignHolder[]
