@@ -42,3 +42,28 @@ exports.defaults = asyncHandler(async (req, res) => {
   const created = await svc.seedDefaultDivisions(req.universe.id);
   res.status(201).json({ created });
 });
+
+// PUT /card-divisions/:id/champion  { mode: 'fix'|'change', holders: [{ wrestlerId } | { teamId }] }
+exports.setChampion = asyncHandler(async (req, res) => {
+  const u = req.universe.id;
+  const division = await prisma.cardDivision.findFirst({
+    where: { id: req.params.id, universeId: u },
+  });
+  if (!division) throw new HttpError(404, 'Registro não encontrado');
+  if (!division.titleId)
+    throw new HttpError(422, 'Esta divisão não está vinculada a um título');
+  const { holders, mode } = req.body;
+  await assertIds(
+    'wrestler',
+    holders.map((h) => h.wrestlerId),
+    u,
+  );
+  await assertIds(
+    'team',
+    holders.map((h) => h.teamId),
+    u,
+  );
+  await svc.setChampion(u, division, { mode, holders });
+  const [updated] = (await svc.board(u)).filter((d) => d.id === division.id);
+  res.json(await resolveImages(updated));
+});

@@ -17,6 +17,11 @@ router.put(
   validate(schemas.divisionEntries),
   divisions.setEntries,
 );
+router.put(
+  '/card-divisions/:id/champion',
+  validate(schemas.divisionChampion),
+  divisions.setChampion,
+);
 crudRoutes(router, '/card-divisions', 'cardDivision');
 crudRoutes(router, '/wrestlers', 'wrestler');
 crudRoutes(router, '/teams', 'team');

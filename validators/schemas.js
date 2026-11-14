@@ -49,6 +49,13 @@ const schemas = {
       email: Joi.string().email().required(),
       password: Joi.string().required(),
     }),
+    forgotPassword: Joi.object({
+      email: Joi.string().email().required(),
+    }),
+    resetPassword: Joi.object({
+      email: Joi.string().email().required(),
+      password: Joi.string().min(8).max(100).required(),
+    }),
   },
 
   universe: {
@@ -107,6 +114,7 @@ const schemas = {
   team: define({
     name: text(100).required(),
     kind: Joi.string().valid('TAG_TEAM', 'FACTION'),
+    factionId: optId,
     imageUrl: url,
     memberIds: Joi.array().items(id).unique(),
   }),
@@ -290,6 +298,19 @@ schemas.scheduleRound = Joi.object({
 });
 
 // Lista ordenada de uma divisão: cada item é um lutador OU uma dupla
+// Troca/correção do campeão de uma divisão (título vinculado).
+// mode 'change' = nova troca de título (fecha o reinado e abre outro);
+// mode 'fix' = corrige quem é o campeão atual, sem criar reinado novo.
+schemas.divisionChampion = Joi.object({
+  mode: Joi.string().valid('change', 'fix').default('fix'),
+  holders: Joi.array()
+    .items(
+      Joi.object({ wrestlerId: id, teamId: id }).xor('wrestlerId', 'teamId'),
+    )
+    .max(4)
+    .required(),
+});
+
 schemas.divisionEntries = Joi.object({
   entries: Joi.array()
     .items(
