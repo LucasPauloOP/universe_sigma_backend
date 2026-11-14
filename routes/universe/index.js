@@ -14,6 +14,7 @@ const modules = [
   require('../tournaments'),
   require('../media'),
   require('../stats'),
+  require('../import'),
 ];
 
 const router = express.Router();
