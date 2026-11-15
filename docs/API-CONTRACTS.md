@@ -643,8 +643,13 @@
 | POST | `/api/universes/:universeId/card-divisions/defaults` | sim |  | 201 {created}. |
 | GET | `/api/universes/:universeId/episodes/:id/card` | sim |  | 200 episódio com `segments` ordenados (participants, matchType, title...). |
 | PUT | `/api/universes/:universeId/episodes/:id/segments/order` | sim | `reorderSegments` | 200 {order:[ids]}. |
+| POST | `/api/universes/:universeId/episodes/:id/segments/suggest` | sim | `suggestSegments` |  |
 | POST | `/api/universes/:universeId/episodes/:id/segments` | sim | `buildCard` | Monta o card na ordem do array. `replace:true` apaga o atual. 201 lista de segmentos. |
 | POST | `/api/universes/:universeId/episodes/generate` | sim | `generateEpisodes` | 201 {created:N}. Não duplica episódios existentes. |
+| POST | `/api/universes/:universeId/episodes/segments/bulk` | sim | `bulkCards` |  |
+| DELETE | `/api/universes/:universeId/episodes/suggest-range/:jobId` | sim |  |  |
+| GET | `/api/universes/:universeId/episodes/suggest-range/:jobId` | sim |  |  |
+| POST | `/api/universes/:universeId/episodes/suggest-range` | sim | `suggestRange` |  |
 | POST | `/api/universes/:universeId/import/universe-sheet` | sim | multipart/form-data (campo "file") | multipart `file` (.xlsx até 10 MB) + `options` JSON. Sem ?apply=true só pré-visualiza. |
 | POST | `/api/universes/:universeId/reset` | sim | `universe.reset` | Corpo {confirm:true}. Apaga tudo e restaura o padrão. 200 {message}. |
 | GET | `/api/universes/:universeId/rivalries/match` | sim |  | ?wrestlerIds=a,b,c (lutadores da luta montada). Rivalidades ATIVAS reconhecidas (dois lados com envolvidos escalados; dupla = todos os integrantes, facção = um). Cada uma com members (wrestler/team) e segments. Segmento MATCH aceita startsRivalry (cria a rivalidade pelos lados), endsRivalry + rivalryId (ao finalizar com resultado fecha e define winnerSide; empate = sem ganhador). |

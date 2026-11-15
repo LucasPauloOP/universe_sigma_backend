@@ -5065,6 +5065,36 @@
     },
     {
       "method": "POST",
+      "path": "/api/universes/:universeId/episodes/:id/segments/suggest",
+      "auth": true,
+      "body": "suggestSegments",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "count": {
+            "type": "number",
+            "default": 5,
+            "integer": true,
+            "min": 1,
+            "max": 10
+          },
+          "guidance": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 500
+          },
+          "includeMainEvent": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
       "path": "/api/universes/:universeId/episodes/:id/segments",
       "auth": true,
       "body": "buildCard",
@@ -5241,6 +5271,218 @@
         }
       },
       "notes": "201 {created:N}. Não duplica episódios existentes."
+    },
+    {
+      "method": "POST",
+      "path": "/api/universes/:universeId/episodes/segments/bulk",
+      "auth": true,
+      "body": "bulkCards",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "items": {
+            "type": "array",
+            "required": true,
+            "min": 1,
+            "max": 100,
+            "items": {
+              "type": "object",
+              "fields": {
+                "episodeId": {
+                  "type": "string",
+                  "required": true,
+                  "format": "uuid"
+                },
+                "replace": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "segments": {
+                  "type": "array",
+                  "required": true,
+                  "min": 1,
+                  "items": {
+                    "type": "object",
+                    "fields": {
+                      "cardDivisionId": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uuid"
+                      },
+                      "endsRivalry": {
+                        "type": "boolean"
+                      },
+                      "episodeId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "finishType": {
+                        "type": "string",
+                        "enum": [
+                          "PINFALL",
+                          "SUBMISSION",
+                          "COUNTOUT",
+                          "DQ",
+                          "OTHER"
+                        ],
+                        "nullable": true
+                      },
+                      "isDone": {
+                        "type": "boolean"
+                      },
+                      "isDraw": {
+                        "type": "boolean"
+                      },
+                      "isMainEvent": {
+                        "type": "boolean"
+                      },
+                      "matchTypeId": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uuid"
+                      },
+                      "notes": {
+                        "type": "string",
+                        "alsoAllows": [
+                          ""
+                        ],
+                        "nullable": true,
+                        "max": 2000
+                      },
+                      "participants": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "fields": {
+                            "isWinner": {
+                              "type": "boolean",
+                              "default": false
+                            },
+                            "side": {
+                              "type": "number",
+                              "default": 1,
+                              "integer": true,
+                              "min": 1
+                            },
+                            "wrestlerId": {
+                              "type": "string",
+                              "required": true,
+                              "format": "uuid"
+                            }
+                          }
+                        }
+                      },
+                      "position": {
+                        "type": "number",
+                        "integer": true,
+                        "min": 1
+                      },
+                      "rivalryId": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uuid"
+                      },
+                      "stakes": {
+                        "type": "string",
+                        "enum": [
+                          "NONE",
+                          "RANKING",
+                          "CONTENDER"
+                        ]
+                      },
+                      "startsRivalry": {
+                        "type": "boolean"
+                      },
+                      "titleChanged": {
+                        "type": "boolean"
+                      },
+                      "titleId": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uuid"
+                      },
+                      "tournamentMatchId": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uuid"
+                      },
+                      "type": {
+                        "type": "string",
+                        "required": true,
+                        "enum": [
+                          "MATCH",
+                          "PROMO",
+                          "OTHER"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/universes/:universeId/episodes/suggest-range/:jobId",
+      "auth": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/universes/:universeId/episodes/suggest-range/:jobId",
+      "auth": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/universes/:universeId/episodes/suggest-range",
+      "auth": true,
+      "body": "suggestRange",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "count": {
+            "type": "number",
+            "default": 5,
+            "integer": true,
+            "min": 1,
+            "max": 10
+          },
+          "from": {
+            "type": "string",
+            "required": true
+          },
+          "guidance": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 500
+          },
+          "includeMainEvent": {
+            "type": "boolean",
+            "default": true
+          },
+          "showIds": {
+            "type": "array",
+            "min": 1,
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "skipPlanned": {
+            "type": "boolean",
+            "default": true
+          },
+          "to": {
+            "type": "string",
+            "required": true
+          }
+        }
+      }
     },
     {
       "method": "POST",
