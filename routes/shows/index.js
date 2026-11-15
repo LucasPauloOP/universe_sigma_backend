@@ -2,6 +2,7 @@ const schemas = require('../../validators/schemas');
 const validate = require('../../middleware/validate');
 const episodes = require('../../controllers/episodeController');
 const activation = require('../../controllers/activationController');
+const aiLimit = require('../../middleware/aiLimit');
 const { scopedRouter, crudRoutes } = require('../crud');
 
 const router = scopedRouter();
@@ -17,7 +18,26 @@ router.post(
   validate(schemas.generateEpisodes),
   episodes.generate,
 );
+router.post(
+  '/episodes/suggest-range',
+  aiLimit,
+  validate(schemas.suggestRange),
+  episodes.suggestRange,
+);
+router.get('/episodes/suggest-range/:jobId', episodes.rangeStatus);
+router.delete('/episodes/suggest-range/:jobId', episodes.rangeCancel);
+router.post(
+  '/episodes/segments/bulk',
+  validate(schemas.bulkCards),
+  episodes.bulkCards,
+);
 router.get('/episodes/:id/card', episodes.card);
+router.post(
+  '/episodes/:id/segments/suggest',
+  aiLimit,
+  validate(schemas.suggestSegments),
+  episodes.suggest,
+);
 router.post(
   '/episodes/:id/segments',
   validate(schemas.buildCard),

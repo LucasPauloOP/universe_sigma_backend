@@ -348,4 +348,34 @@ schemas.buildCard = Joi.object({
     .required(),
 });
 
+// ───────────── IA: sugestão de segmentos ─────────────
+const aiOptions = {
+  count: Joi.number().integer().min(1).max(10).default(5),
+  includeMainEvent: Joi.boolean().default(true),
+  guidance: optText(500),
+};
+schemas.suggestSegments = Joi.object(aiOptions);
+const yearMonth = Joi.string().pattern(/^\d{4}-(0[1-9]|1[0-2])$/);
+schemas.suggestRange = Joi.object({
+  from: yearMonth.required(), // 'AAAA-MM'
+  to: yearMonth.required(),
+  showIds: Joi.array().items(id).min(1),
+  skipPlanned: Joi.boolean().default(true),
+  ...aiOptions,
+});
+// Grava vários cards de uma vez (cada item = corpo de POST /episodes/:id/segments)
+schemas.bulkCards = Joi.object({
+  items: Joi.array()
+    .items(
+      Joi.object({
+        episodeId: id.required(),
+        replace: Joi.boolean().default(false),
+        segments: schemas.buildCard.extract('segments'),
+      }),
+    )
+    .min(1)
+    .max(100)
+    .required(),
+});
+
 module.exports = schemas;
