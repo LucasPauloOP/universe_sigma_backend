@@ -324,6 +324,41 @@ describe('callGemini', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(4);
   });
 
+  it('404: tenta o próximo modelo da lista', async () => {
+    process.env.GEMINI_API_KEY = 'k';
+    process.env.GEMINI_MODEL = 'velho, novo';
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValueOnce(reply(404, {}))
+      .mockResolvedValueOnce(
+        reply(200, {
+          candidates: [{ content: { parts: [{ text: '{"segments":[]}' }] } }],
+        }),
+      );
+    try {
+      await expect(ai.callGemini('x', { fetchImpl })).resolves.toEqual({
+        segments: [],
+      });
+    } finally {
+      delete process.env.GEMINI_MODEL;
+    }
+    expect(fetchImpl.mock.calls[0][0]).toContain('/velho:');
+    expect(fetchImpl.mock.calls[1][0]).toContain('/novo:');
+  });
+
+  it('401: mostra o motivo do Google e a dica da chave', async () => {
+    process.env.GEMINI_API_KEY = 'k';
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValue(
+        reply(401, { error: { message: 'API keys are not supported' } }),
+      );
+    await expect(ai.callGemini('x', { fetchImpl })).rejects.toMatchObject({
+      statusCode: 502,
+      message: expect.stringMatching(/not supported.*sem aspas/),
+    });
+  });
+
   it('resposta que não é JSON: 502', async () => {
     process.env.GEMINI_API_KEY = 'k';
     const fetchImpl = jest
