@@ -184,7 +184,7 @@ async function seedUniverse(tx, universeId) {
       data: { universeId, seasonId: season.id, name: t.name, size: t.size },
     });
     await tx.tournamentMatch.createMany({
-      data: singleEliminationRows(tournament.id, t.size),
+      data: singleEliminationRows(tournament.id, tournament),
     });
   }
 }

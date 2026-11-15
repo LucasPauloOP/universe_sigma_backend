@@ -40,6 +40,16 @@ const demoteOtherMainEvents = (tx, episodeId, exceptId) =>
     data: { isMainEvent: false },
   });
 
+// Mantém o status do episódio coerente com o card: com segmentos vira PLANNED,
+// sem nenhum volta a UNPLANNED. Episódio realizado (DONE) nunca é mexido.
+async function syncPlanning(tx, episodeId) {
+  const count = await tx.segment.count({ where: { episodeId } });
+  await tx.episode.updateMany({
+    where: { id: episodeId, status: { not: 'DONE' } },
+    data: { status: count > 0 ? 'PLANNED' : 'UNPLANNED' },
+  });
+}
+
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
 // Cria um segmento. `position` opcional: sem ela vai para o fim; com ela os
@@ -58,6 +68,7 @@ async function createSegment(data, include) {
       ids.splice(clamp(wanted, 1, ids.length + 1) - 1, 0, row.id);
       await applyOrder(tx, data.episodeId, ids);
     }
+    await syncPlanning(tx, data.episodeId);
     return tx.segment.findUnique({ where: { id: row.id }, include });
   });
 }
@@ -95,6 +106,7 @@ async function removeSegment(current) {
       current.episodeId,
       await orderedIds(tx, current.episodeId),
     );
+    await syncPlanning(tx, current.episodeId);
   });
 }
 
@@ -116,6 +128,7 @@ async function createCard(episodeId, items, { replace, toData, include }) {
           data: { ...toData(item, 'create'), episodeId, position: ++position },
         });
       }
+      await syncPlanning(tx, episodeId);
       return tx.segment.findMany({
         where: { episodeId },
         orderBy: { position: 'asc' },

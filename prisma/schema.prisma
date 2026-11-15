@@ -47,6 +47,7 @@ enum ShowKind {
 }
 
 enum EpisodeStatus {
+  UNPLANNED // sem planejamento: card sem lutas
   PLANNED
   DONE
 }
@@ -342,7 +343,7 @@ model Episode {
   week     Int? // 1..4
   night    Int? // 1 ou 2, só em PLEs de duas noites (Noite 1 / Noite 2)
   airDate  DateTime? // opcional: sem data, a linha do tempo usa mês + semana
-  status   EpisodeStatus @default(PLANNED)
+  status   EpisodeStatus @default(UNPLANNED)
   imageUrl String?
   notes    String?
 
@@ -418,7 +419,9 @@ model Tournament {
   seasonId   String?
   name       String
   format     TournamentFormat @default(SINGLE_ELIMINATION)
-  size       Int // 8, 16...
+  size       Int // vagas/inscritos previstos (informativo)
+  firstRoundMatches   Int? // nº de lutas da 1ª rodada (potência de 2); null = deduz de `size`
+  firstRoundPerMatch  Int? // competidores por luta na 1ª rodada (3 = triple threat); null = 2 ou o necessário
   isTag      Boolean          @default(false)
   status     TournamentStatus @default(PLANNED)
   startDate  DateTime?
@@ -436,6 +439,7 @@ model TournamentEntrant {
   id           String  @id @default(uuid())
   tournamentId String
   seed         Int?
+  startRound   Int     @default(1) // rodada em que entra (>1 = já começa nas quartas, semis...)
   wrestlerId   String? // torneio individual
   teamId       String? // torneio de duplas
 

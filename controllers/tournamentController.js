@@ -5,7 +5,6 @@ const { resolveImages } = require('../services/storage');
 const {
   singleEliminationRows,
   roundRobinRows,
-  seedFirstRound,
 } = require('../services/bracket');
 
 const findTournament = async (req) => {
@@ -54,19 +53,29 @@ exports.generateBracket = asyncHandler(async (req, res) => {
   });
   // Pode haver mais inscritos que vagas na rodada 1 (lutas de 3 ou mais, como triple
   // threat): os primeiros ocupam A e B das lutas e os demais entram pela própria luta.
-  if (entrants.length > t.size * 2) {
-    throw new HttpError(400, 'Há mais participantes do que o torneio comporta');
-  }
   const ids = entrants.map((e) => e.id);
 
   const rows =
     t.format === 'ROUND_ROBIN'
       ? roundRobinRows(t.id, ids)
-      : seedFirstRound(singleEliminationRows(t.id, t.size), ids);
+      : singleEliminationRows(t.id, t, entrants);
 
   await prisma.$transaction([
     prisma.tournamentMatch.deleteMany({ where: { tournamentId: t.id } }),
-    prisma.tournamentMatch.createMany({ data: rows }),
+    // create (não createMany) para gravar os competidores extras da luta
+    ...rows.map(({ extraEntrantIds = [], ...data }) =>
+      prisma.tournamentMatch.create({
+        data: {
+          ...data,
+          extras: {
+            create: extraEntrantIds.map((entrantId, i) => ({
+              entrantId,
+              position: i + 1,
+            })),
+          },
+        },
+      }),
+    ),
   ]);
   res.status(201).json({ created: rows.length });
 });
