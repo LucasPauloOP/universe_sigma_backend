@@ -19,6 +19,8 @@
     "dev": "NODE_ENV=development nodemon app.js",
     "start": "NODE_ENV=production node app.js",
     "lint": "eslint .",
+    "contracts": "node scripts/gen-contracts.js",
+    "contracts:check": "node scripts/gen-contracts.js --check",
     "lint:fix": "eslint . --fix",
     "test:ci": "NODE_ENV=test jest --runInBand --detectOpenHandles --forceExit",
     "prisma:migrate": "prisma migrate dev",

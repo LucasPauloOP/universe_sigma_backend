@@ -52,6 +52,9 @@ const schemas = {
     forgotPassword: Joi.object({
       email: Joi.string().email().required(),
     }),
+    refresh: Joi.object({
+      refreshToken: Joi.string().min(20).max(200).required(),
+    }),
     resetPassword: Joi.object({
       email: Joi.string().email().required(),
       password: Joi.string().min(8).max(100).required(),

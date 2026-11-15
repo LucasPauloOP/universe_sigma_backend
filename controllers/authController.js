@@ -3,6 +3,7 @@ const prisma = require('../config/database');
 const HttpError = require('../utils/httpError');
 const asyncHandler = require('../utils/asyncHandler');
 const { signToken } = require('../middleware/auth');
+const refreshTokens = require('../services/refreshTokens');
 const { createUniverse } = require('../services/universeService');
 
 const publicUser = ({ id, email, name, createdAt }) => ({
@@ -33,8 +34,10 @@ exports.register = asyncHandler(async (req, res) => {
     useTemplate,
   });
 
+  const refresh = await refreshTokens.issue(user.id, req.get('user-agent'));
   res.status(201).json({
     token: signToken(user),
+    refreshToken: refresh.token,
     user: publicUser(user),
     universe,
   });
@@ -49,7 +52,12 @@ exports.login = asyncHandler(async (req, res) => {
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     throw new HttpError(401, 'E-mail ou senha inválidos');
   }
-  res.json({ token: signToken(user), user: publicUser(user) });
+  const refresh = await refreshTokens.issue(user.id, req.get('user-agent'));
+  res.json({
+    token: signToken(user),
+    refreshToken: refresh.token,
+    user: publicUser(user),
+  });
 });
 
 // Recuperação de senha SEM e-mail (temporário): quem informar um e-mail
@@ -72,7 +80,28 @@ exports.resetPassword = asyncHandler(async (req, res) => {
     where: { id: user.id },
     data: { passwordHash: await bcrypt.hash(password, 10) },
   });
+  await refreshTokens.revokeAll(user.id); // sessões antigas deixam de renovar
   res.json({ ok: true });
+});
+
+// Troca o refresh token por um novo par {token, refreshToken} (rotação).
+exports.refresh = asyncHandler(async (req, res) => {
+  const { userId, refreshToken } = await refreshTokens.rotate(
+    req.body.refreshToken,
+    req.get('user-agent'),
+  );
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new HttpError(401, 'Usuário não existe mais');
+  res.json({
+    token: signToken(user),
+    refreshToken,
+    user: publicUser(user),
+  });
+});
+
+exports.logout = asyncHandler(async (req, res) => {
+  await refreshTokens.revoke(req.body.refreshToken);
+  res.status(204).end();
 });
 
 exports.me = asyncHandler(async (req, res) => {
