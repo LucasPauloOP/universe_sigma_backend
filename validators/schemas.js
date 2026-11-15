@@ -222,6 +222,9 @@ const schemas = {
     stakes: Joi.string().valid('NONE', 'RANKING', 'CONTENDER'),
     cardDivisionId: optId,
     tournamentMatchId: optId, // luta de torneio que este segmento decide
+    startsRivalry: Joi.boolean(), // a luta começa uma rivalidade (criada automaticamente)
+    endsRivalry: Joi.boolean(), // a luta encerra a rivalidade `rivalryId` ao ser finalizada
+    rivalryId: optId,
     participants: Joi.array().items(
       Joi.object({
         wrestlerId: id.required(),
@@ -277,7 +280,12 @@ const schemas = {
     isActive: Joi.boolean(),
     startDate: date,
     endDate: date,
-    wrestlerIds: Joi.array().items(id).unique(),
+    // envolvidos por lado: lutadores e/ou duplas/facções (como unidade)
+    sideAWrestlerIds: Joi.array().items(id).unique(),
+    sideATeamIds: Joi.array().items(id).unique(),
+    sideBWrestlerIds: Joi.array().items(id).unique(),
+    sideBTeamIds: Joi.array().items(id).unique(),
+    winnerSide: Joi.number().integer().min(1).max(2).allow(null),
   }),
 };
 

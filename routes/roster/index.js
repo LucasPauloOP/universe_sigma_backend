@@ -2,6 +2,7 @@ const schemas = require('../../validators/schemas');
 const validate = require('../../middleware/validate');
 const divisions = require('../../controllers/divisionController');
 const activation = require('../../controllers/activationController');
+const rivalries = require('../../controllers/rivalryController');
 const { scopedRouter, crudRoutes } = require('../crud');
 
 const router = scopedRouter();
@@ -25,6 +26,8 @@ router.put(
 crudRoutes(router, '/card-divisions', 'cardDivision');
 crudRoutes(router, '/wrestlers', 'wrestler');
 crudRoutes(router, '/teams', 'team');
+// Rota especial ANTES de /rivalries/:id
+router.get('/rivalries/match', rivalries.match);
 crudRoutes(router, '/rivalries', 'rivalry');
 // Tabelas de apoio do lutador
 crudRoutes(router, '/alignments', 'alignment');
