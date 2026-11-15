@@ -305,6 +305,7 @@ exports.suggest = asyncHandler(async (req, res) => {
 
 // Planejamento de um período com IA: cria o job (202) e o front consulta o progresso.
 exports.suggestRange = asyncHandler(async (req, res) => {
+  await assertIds('season', [req.body.seasonId], req.universe.id);
   const { job } = await planner.startRange(
     req.universe.id,
     req.userId,

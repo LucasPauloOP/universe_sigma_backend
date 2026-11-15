@@ -355,10 +355,16 @@ const aiOptions = {
   guidance: optText(500),
 };
 schemas.suggestSegments = Joi.object(aiOptions);
-const yearMonth = Joi.string().pattern(/^\d{4}-(0[1-9]|1[0-2])$/);
+// Ponto do calendário do jogo: mês (1..12) + semana (1..4)
+const gameSlot = (week) =>
+  Joi.object({
+    month: Joi.number().integer().min(1).max(12).required(),
+    week: Joi.number().integer().min(1).max(4).default(week),
+  });
 schemas.suggestRange = Joi.object({
-  from: yearMonth.required(), // 'AAAA-MM'
-  to: yearMonth.required(),
+  seasonId: id.required(),
+  from: gameSlot(1).required(), // início: semana 1 se não vier
+  to: gameSlot(4).required(), // fim: semana 4 se não vier
   showIds: Joi.array().items(id).min(1),
   skipPlanned: Joi.boolean().default(true),
   ...aiOptions,

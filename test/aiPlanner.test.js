@@ -40,24 +40,54 @@ describe('pickEpisodes', () => {
       ep('b', 6, 4),
     ]);
     const picked = await planner.pickEpisodes('u', {
-      from: '2026-05',
-      to: '2026-07',
+      from: { month: 5, week: 1 },
+      to: { month: 7, week: 4 },
     });
     expect(picked.map((p) => p.e.id)).toEqual(['a', 'b', 'c']);
   });
+  it('respeita a semana e a virada do ano da temporada (maio → abril)', async () => {
+    prisma.episode.findMany.mockResolvedValue([
+      ep('jul1', 7, 1),
+      ep('jul2', 7, 2),
+      ep('nov3', 11, 3),
+      ep('nov4', 11, 4),
+      ep('jan1', 1, 1),
+      ep('ple', 11, null), // PLE sem semana = semana 4
+    ]);
+    const picked = await planner.pickEpisodes('u', {
+      from: { month: 7, week: 2 },
+      to: { month: 11, week: 3 },
+    });
+    expect(picked.map((p) => p.e.id)).toEqual(['jul2', 'nov3']);
+    const wrap = await planner.pickEpisodes('u', {
+      from: { month: 11, week: 4 },
+      to: { month: 1, week: 1 },
+    });
+    expect(wrap.map((p) => p.e.id).sort()).toEqual(['jan1', 'nov4', 'ple']);
+  });
+
   it('erra quando vazio, invertido ou grande demais', async () => {
     prisma.episode.findMany.mockResolvedValue([]);
     await expect(
-      planner.pickEpisodes('u', { from: '2026-05', to: '2026-07' }),
+      planner.pickEpisodes('u', {
+        from: { month: 5, week: 1 },
+        to: { month: 7, week: 4 },
+      }),
     ).rejects.toMatchObject({ statusCode: 404 });
     await expect(
-      planner.pickEpisodes('u', { from: '2026-07', to: '2026-05' }),
+      planner.pickEpisodes('u', {
+        from: { month: 7, week: 1 },
+        to: { month: 5, week: 4 },
+      }),
     ).rejects.toMatchObject({ statusCode: 400 });
     prisma.episode.findMany.mockResolvedValue(
       Array.from({ length: 61 }, (_, i) => ep(`e${i}`, 5, 1)),
     );
     await expect(
-      planner.pickEpisodes('u', { from: '2026-05', to: '2026-05' }),
+      planner.pickEpisodes('u', {
+        from: { month: 5, week: 1 },
+        to: { month: 5, week: 4 },
+      }),
     ).rejects.toMatchObject({ statusCode: 400 });
   });
 });
@@ -78,7 +108,7 @@ describe('startRange', () => {
     const { job, promise } = await planner.startRange(
       'u',
       'usr',
-      { from: '2026-05', to: '2026-06' },
+      { from: { month: 5, week: 1 }, to: { month: 6, week: 4 } },
       deps,
     );
     await promise;
@@ -102,7 +132,7 @@ describe('startRange', () => {
     const { job, promise } = await planner.startRange(
       'u',
       'usr',
-      { from: '2026-05', to: '2026-06' },
+      { from: { month: 5, week: 1 }, to: { month: 6, week: 4 } },
       deps,
     );
     await promise;
@@ -122,7 +152,7 @@ describe('startRange', () => {
     const { job, promise } = await planner.startRange(
       'u',
       'usr',
-      { from: '2026-05', to: '2026-06' },
+      { from: { month: 5, week: 1 }, to: { month: 6, week: 4 } },
       deps,
     );
     await promise;
@@ -138,11 +168,16 @@ describe('startRange', () => {
     const { job } = await planner.startRange(
       'u',
       'usr',
-      { from: '2026-05', to: '2026-05' },
+      { from: { month: 5, week: 1 }, to: { month: 5, week: 4 } },
       deps,
     );
     await expect(
-      planner.startRange('u', 'usr', { from: '2026-05', to: '2026-05' }, deps),
+      planner.startRange(
+        'u',
+        'usr',
+        { from: { month: 5, week: 1 }, to: { month: 5, week: 4 } },
+        deps,
+      ),
     ).rejects.toMatchObject({ statusCode: 409 });
     expect(() => planner.getJob('outro', job.id)).toThrow(/não encontrado/);
   });
