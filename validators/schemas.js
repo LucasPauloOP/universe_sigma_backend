@@ -222,6 +222,9 @@ const schemas = {
     stakes: Joi.string().valid('NONE', 'RANKING', 'CONTENDER'),
     cardDivisionId: optId,
     tournamentMatchId: optId, // luta de torneio que este segmento decide
+    startsRivalry: Joi.boolean(), // a luta começa uma rivalidade (criada automaticamente)
+    endsRivalry: Joi.boolean(), // a luta encerra a rivalidade `rivalryId` ao ser finalizada
+    rivalryId: optId,
     participants: Joi.array().items(
       Joi.object({
         wrestlerId: id.required(),
@@ -277,7 +280,12 @@ const schemas = {
     isActive: Joi.boolean(),
     startDate: date,
     endDate: date,
-    wrestlerIds: Joi.array().items(id).unique(),
+    // envolvidos por lado: lutadores e/ou duplas/facções (como unidade)
+    sideAWrestlerIds: Joi.array().items(id).unique(),
+    sideATeamIds: Joi.array().items(id).unique(),
+    sideBWrestlerIds: Joi.array().items(id).unique(),
+    sideBTeamIds: Joi.array().items(id).unique(),
+    winnerSide: Joi.number().integer().min(1).max(2).allow(null),
   }),
 };
 
@@ -337,6 +345,42 @@ schemas.buildCard = Joi.object({
       ),
     )
     .min(1)
+    .required(),
+});
+
+// ───────────── IA: sugestão de segmentos ─────────────
+const aiOptions = {
+  count: Joi.number().integer().min(1).max(10).default(5),
+  includeMainEvent: Joi.boolean().default(true),
+  guidance: optText(500),
+};
+schemas.suggestSegments = Joi.object(aiOptions);
+// Ponto do calendário do jogo: mês (1..12) + semana (1..4)
+const gameSlot = (week) =>
+  Joi.object({
+    month: Joi.number().integer().min(1).max(12).required(),
+    week: Joi.number().integer().min(1).max(4).default(week),
+  });
+schemas.suggestRange = Joi.object({
+  seasonId: id.required(),
+  from: gameSlot(1).required(), // início: semana 1 se não vier
+  to: gameSlot(4).required(), // fim: semana 4 se não vier
+  showIds: Joi.array().items(id).min(1),
+  skipPlanned: Joi.boolean().default(true),
+  ...aiOptions,
+});
+// Grava vários cards de uma vez (cada item = corpo de POST /episodes/:id/segments)
+schemas.bulkCards = Joi.object({
+  items: Joi.array()
+    .items(
+      Joi.object({
+        episodeId: id.required(),
+        replace: Joi.boolean().default(false),
+        segments: schemas.buildCard.extract('segments'),
+      }),
+    )
+    .min(1)
+    .max(100)
     .required(),
 });
 

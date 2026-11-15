@@ -3,6 +3,7 @@
 //  - só pode existir UM main event por episódio.
 const prisma = require('../config/database');
 const HttpError = require('../utils/httpError');
+const rivalries = require('./rivalryService');
 
 const orderedIds = async (tx, episodeId) =>
   (
@@ -100,6 +101,7 @@ async function updateSegment(id, data, current, include) {
 // Remove e fecha o buraco na numeração.
 async function removeSegment(current) {
   await prisma.$transaction(async (tx) => {
+    await rivalries.onSegmentRemoved(tx, current);
     await tx.segment.delete({ where: { id: current.id } });
     await applyOrder(
       tx,

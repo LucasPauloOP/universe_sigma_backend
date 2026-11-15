@@ -229,6 +229,7 @@ model Team {
   reigns    ReignHolder[]
   baselines TitleBaseline[]
   divisionEntries CardDivisionEntry[]
+  rivalryMembers  RivalryMember[]
 
   @@unique([universeId, name])
 }
@@ -403,11 +404,16 @@ model Segment {
   cardDivisionId String? // divisão afetada por esta luta (quando stakes != NONE)
   stakes       SegmentStakes @default(NONE)
   rankingApplied Boolean   @default(false) // o resultado já mexeu no ranking (aplica uma vez só)
+  rivalryId      String? // rivalidade que esta luta começa ou encerra
+  startsRivalry  Boolean   @default(false) // esta luta criou/começou a rivalidade
+  endsRivalry    Boolean   @default(false) // esta luta encerra a rivalidade (ao finalizar com resultado)
+  rivalryApplied Boolean   @default(false) // a rivalidade já foi encerrada por este resultado
 
   episode         Episode              @relation(fields: [episodeId], references: [id], onDelete: Cascade)
   matchType       MatchType?           @relation(fields: [matchTypeId], references: [id], onDelete: SetNull)
   title           Title?               @relation(fields: [titleId], references: [id], onDelete: SetNull)
   cardDivision    CardDivision?        @relation(fields: [cardDivisionId], references: [id], onDelete: SetNull)
+  rivalry         Rivalry?             @relation(fields: [rivalryId], references: [id], onDelete: SetNull)
   participants    SegmentParticipant[]
   tournamentMatch TournamentMatch?
 
@@ -617,19 +623,28 @@ model Rivalry {
   isActive    Boolean   @default(true)
   startDate   DateTime?
   endDate     DateTime?
+  winnerSide  Int? // lado vencedor (RivalryMember.side) quando encerrada com vencedor
 
   universe Universe        @relation(fields: [universeId], references: [id], onDelete: Cascade)
   members  RivalryMember[]
+  segments Segment[]
 
   @@index([universeId])
 }
 
+// Envolvido da rivalidade: um lutador OU uma dupla/facção (como unidade), de um lado (side).
 model RivalryMember {
+  id         String  @id @default(uuid())
   rivalryId  String
-  wrestlerId String
+  wrestlerId String?
+  teamId     String?
+  side       Int     @default(1)
 
-  rivalry  Rivalry  @relation(fields: [rivalryId], references: [id], onDelete: Cascade)
-  wrestler Wrestler @relation(fields: [wrestlerId], references: [id], onDelete: Cascade)
+  rivalry  Rivalry   @relation(fields: [rivalryId], references: [id], onDelete: Cascade)
+  wrestler Wrestler? @relation(fields: [wrestlerId], references: [id], onDelete: Cascade)
+  team     Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
-  @@id([rivalryId, wrestlerId])
+  @@unique([rivalryId, wrestlerId])
+  @@unique([rivalryId, teamId])
+  @@index([rivalryId])
 }

@@ -186,7 +186,7 @@
 ### rivalries
 
 - Rota: `/api/universes/:universeId/rivalries` (GET lista, POST, GET/PUT/PATCH/DELETE `/:id`)
-- Modelo de resposta: `Rivalry` + `members`
+- Modelo de resposta: `Rivalry` + `members`, `segments`
 - Filtros: `isActive`
 
 **Criar (POST)**
@@ -197,8 +197,12 @@
 | `endDate` | date, iso |  | sim |
 | `isActive` | boolean |  |  |
 | `name` | string, max 100 | sim |  |
+| `sideATeamIds` | array, de string |  |  |
+| `sideAWrestlerIds` | array, de string |  |  |
+| `sideBTeamIds` | array, de string |  |  |
+| `sideBWrestlerIds` | array, de string |  |  |
 | `startDate` | date, iso |  | sim |
-| `wrestlerIds` | array, de string |  |  |
+| `winnerSide` | integer, min 1, max 2 |  | sim |
 
 **Atualizar (PUT/PATCH)**
 
@@ -208,8 +212,12 @@
 | `endDate` | date, iso |  | sim |
 | `isActive` | boolean |  |  |
 | `name` | string, max 100 |  |  |
+| `sideATeamIds` | array, de string |  |  |
+| `sideAWrestlerIds` | array, de string |  |  |
+| `sideBTeamIds` | array, de string |  |  |
+| `sideBWrestlerIds` | array, de string |  |  |
 | `startDate` | date, iso |  | sim |
-| `wrestlerIds` | array, de string |  |  |
+| `winnerSide` | integer, min 1, max 2 |  | sim |
 
 ### seasons
 
@@ -237,15 +245,16 @@
 ### segments
 
 - Rota: `/api/universes/:universeId/segments` (GET lista, POST, GET/PUT/PATCH/DELETE `/:id`)
-- Modelo de resposta: `Segment` + `matchType`, `title`, `cardDivision`, `tournamentMatch`, `participants`
+- Modelo de resposta: `Segment` + `matchType`, `title`, `cardDivision`, `tournamentMatch`, `rivalry`, `participants`
 - Filtros: `episodeId`, `type`, `titleId`, `isDone`
-- Referências validadas: `episodeId`→episode, `matchTypeId`→matchType, `titleId`→title, `cardDivisionId`→cardDivision
+- Referências validadas: `episodeId`→episode, `rivalryId`→rivalry, `matchTypeId`→matchType, `titleId`→title, `cardDivisionId`→cardDivision
 
 **Criar (POST)**
 
 | Campo | Tipo | Obrigatório | Aceita null |
 |---|---|---|---|
 | `cardDivisionId` | string, uuid |  | sim |
+| `endsRivalry` | boolean |  |  |
 | `episodeId` | string, uuid | sim |  |
 | `finishType` | string, enum(PINFALL|SUBMISSION|COUNTOUT|DQ|OTHER) |  | sim |
 | `isDone` | boolean |  |  |
@@ -255,7 +264,9 @@
 | `notes` | string, max 2000 |  | sim |
 | `participants` | array, de object |  |  |
 | `position` | integer, min 1 |  |  |
+| `rivalryId` | string, uuid |  | sim |
 | `stakes` | string, enum(NONE|RANKING|CONTENDER) |  |  |
+| `startsRivalry` | boolean |  |  |
 | `titleChanged` | boolean |  |  |
 | `titleId` | string, uuid |  | sim |
 | `tournamentMatchId` | string, uuid |  | sim |
@@ -266,6 +277,7 @@
 | Campo | Tipo | Obrigatório | Aceita null |
 |---|---|---|---|
 | `cardDivisionId` | string, uuid |  | sim |
+| `endsRivalry` | boolean |  |  |
 | `episodeId` | string, uuid |  |  |
 | `finishType` | string, enum(PINFALL|SUBMISSION|COUNTOUT|DQ|OTHER) |  | sim |
 | `isDone` | boolean |  |  |
@@ -275,7 +287,9 @@
 | `notes` | string, max 2000 |  | sim |
 | `participants` | array, de object |  |  |
 | `position` | integer, min 1 |  |  |
+| `rivalryId` | string, uuid |  | sim |
 | `stakes` | string, enum(NONE|RANKING|CONTENDER) |  |  |
+| `startsRivalry` | boolean |  |  |
 | `titleChanged` | boolean |  |  |
 | `titleId` | string, uuid |  | sim |
 | `tournamentMatchId` | string, uuid |  | sim |
@@ -629,10 +643,16 @@
 | POST | `/api/universes/:universeId/card-divisions/defaults` | sim |  | 201 {created}. |
 | GET | `/api/universes/:universeId/episodes/:id/card` | sim |  | 200 episódio com `segments` ordenados (participants, matchType, title...). |
 | PUT | `/api/universes/:universeId/episodes/:id/segments/order` | sim | `reorderSegments` | 200 {order:[ids]}. |
+| POST | `/api/universes/:universeId/episodes/:id/segments/suggest` | sim | `suggestSegments` |  |
 | POST | `/api/universes/:universeId/episodes/:id/segments` | sim | `buildCard` | Monta o card na ordem do array. `replace:true` apaga o atual. 201 lista de segmentos. |
 | POST | `/api/universes/:universeId/episodes/generate` | sim | `generateEpisodes` | 201 {created:N}. Não duplica episódios existentes. |
+| POST | `/api/universes/:universeId/episodes/segments/bulk` | sim | `bulkCards` |  |
+| DELETE | `/api/universes/:universeId/episodes/suggest-range/:jobId` | sim |  |  |
+| GET | `/api/universes/:universeId/episodes/suggest-range/:jobId` | sim |  |  |
+| POST | `/api/universes/:universeId/episodes/suggest-range` | sim | `suggestRange` |  |
 | POST | `/api/universes/:universeId/import/universe-sheet` | sim | multipart/form-data (campo "file") | multipart `file` (.xlsx até 10 MB) + `options` JSON. Sem ?apply=true só pré-visualiza. |
 | POST | `/api/universes/:universeId/reset` | sim | `universe.reset` | Corpo {confirm:true}. Apaga tudo e restaura o padrão. 200 {message}. |
+| GET | `/api/universes/:universeId/rivalries/match` | sim |  | ?wrestlerIds=a,b,c (lutadores da luta montada). Rivalidades ATIVAS reconhecidas (dois lados com envolvidos escalados; dupla = todos os integrantes, facção = um). Cada uma com members (wrestler/team) e segments. Segmento MATCH aceita startsRivalry (cria a rivalidade pelos lados), endsRivalry + rivalryId (ao finalizar com resultado fecha e define winnerSide; empate = sem ganhador). |
 | GET | `/api/universes/:universeId/shows/:id/impact` | sim |  | O que será afetado ao desativar (episódios). |
 | GET | `/api/universes/:universeId/stats/titles` | sim |  | 200 estatísticas de todos os títulos (baselines + reinados). |
 | POST | `/api/universes/:universeId/title-baselines/defaults` | sim |  | Importa o histórico padrão de títulos. |
@@ -802,17 +822,23 @@
 | `isActive` | Boolean | sim |
 | `startDate` | DateTime |  |
 | `endDate` | DateTime |  |
+| `winnerSide` | Int |  |
 | `universe` | Universe (relação) | sim |
 | `members` | RivalryMember[] (relação) | sim |
+| `segments` | Segment[] (relação) | sim |
 
 ### RivalryMember
 
 | Campo | Tipo | Obrigatório |
 |---|---|---|
+| `id` | String | sim |
 | `rivalryId` | String | sim |
-| `wrestlerId` | String | sim |
+| `wrestlerId` | String |  |
+| `teamId` | String |  |
+| `side` | Int | sim |
 | `rivalry` | Rivalry (relação) | sim |
-| `wrestler` | Wrestler (relação) | sim |
+| `wrestler` | Wrestler (relação) |  |
+| `team` | Team (relação) |  |
 
 ### Season
 
@@ -847,10 +873,15 @@
 | `cardDivisionId` | String |  |
 | `stakes` | SegmentStakes | sim |
 | `rankingApplied` | Boolean | sim |
+| `rivalryId` | String |  |
+| `startsRivalry` | Boolean | sim |
+| `endsRivalry` | Boolean | sim |
+| `rivalryApplied` | Boolean | sim |
 | `episode` | Episode (relação) | sim |
 | `matchType` | MatchType (relação) |  |
 | `title` | Title (relação) |  |
 | `cardDivision` | CardDivision (relação) |  |
+| `rivalry` | Rivalry (relação) |  |
 | `participants` | SegmentParticipant[] (relação) | sim |
 | `tournamentMatch` | TournamentMatch (relação) |  |
 
@@ -903,6 +934,7 @@
 | `reigns` | ReignHolder[] (relação) | sim |
 | `baselines` | TitleBaseline[] (relação) | sim |
 | `divisionEntries` | CardDivisionEntry[] (relação) | sim |
+| `rivalryMembers` | RivalryMember[] (relação) | sim |
 
 ### TeamMember
 

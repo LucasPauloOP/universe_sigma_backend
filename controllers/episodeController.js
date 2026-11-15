@@ -8,6 +8,9 @@ const { segmentToData } = require('./resources');
 const { monthsFrom, missingNights } = require('../services/seasonCalendar');
 const { episodeDate } = require('../services/timeline');
 const { resultProblem } = require('../services/segmentResult');
+const rivalries = require('../services/rivalryService');
+const ai = require('../services/aiSegments');
+const planner = require('../services/aiPlanner');
 
 // Cria os episódios que faltam: shows semanais (N semanas por mês) e PLEs
 // (um por mês, no ppvMonth). Não duplica o que já existe.
@@ -150,18 +153,44 @@ exports.reorder = asyncHandler(async (req, res) => {
   res.json({ order });
 });
 
-// Monta o card de uma vez. Body: { replace?: boolean, segments: [...] }
-// A ordem do array é a ordem do card; no máximo um segmento com isMainEvent.
-exports.buildCard = asyncHandler(async (req, res) => {
-  const u = req.universe.id;
+// Regras de rivalidade de um segmento do card (as mesmas da gravação individual): só lutas;
+// começar e encerrar não juntos; encerrar exige a rivalidade; começar exige dois lados.
+function rivalryProblem(seg) {
+  if (seg.type !== 'MATCH') {
+    Object.assign(seg, {
+      startsRivalry: false,
+      endsRivalry: false,
+      rivalryId: null,
+    });
+    return null;
+  }
+  if (seg.startsRivalry && seg.endsRivalry) {
+    return 'Uma luta não pode começar e encerrar uma rivalidade ao mesmo tempo';
+  }
+  if (seg.endsRivalry) {
+    return seg.rivalryId ? null : 'Escolha a rivalidade a encerrar';
+  }
+  if (seg.startsRivalry) {
+    delete seg.rivalryId;
+    const sides = new Set((seg.participants ?? []).map((p) => p.side));
+    return sides.size < 2
+      ? 'Para começar uma rivalidade a luta precisa de lutadores em pelo menos dois lados'
+      : null;
+  }
+  seg.rivalryId = null;
+  return null;
+}
+
+// Monta (e grava) o card de um episódio. Compartilhado por buildCard e pela gravação em lote.
+async function saveCard(universeId, episodeId, { segments, replace }) {
+  const u = universeId;
   const episode = await prisma.episode.findFirst({
-    where: { id: req.params.id, show: { universeId: u } },
+    where: { id: episodeId, show: { universeId: u } },
   });
   if (!episode) throw new HttpError(404, 'Registro não encontrado');
 
-  const { segments, replace } = req.body;
   for (const seg of segments) {
-    const problem = resultProblem(seg);
+    const problem = resultProblem(seg) || rivalryProblem(seg);
     if (problem) throw new HttpError(400, problem);
   }
   await assertIds(
@@ -180,6 +209,11 @@ exports.buildCard = asyncHandler(async (req, res) => {
     u,
   );
   await assertIds(
+    'rivalry',
+    segments.map((s) => s.rivalryId),
+    u,
+  );
+  await assertIds(
     'wrestler',
     segments.flatMap((s) => (s.participants || []).map((p) => p.wrestlerId)),
     u,
@@ -194,5 +228,96 @@ exports.buildCard = asyncHandler(async (req, res) => {
       participants: { include: { wrestler: true } },
     },
   });
+  // Rivalidades das lutas (cria/encerra), como na gravação individual.
+  for (const row of rows) {
+    if (row.startsRivalry || row.endsRivalry) {
+      await rivalries.applySegmentRivalry(row.id, u, undefined);
+    }
+  }
+  return rows;
+}
+
+// Monta o card de uma vez. Body: { replace?: boolean, segments: [...] }
+// A ordem do array é a ordem do card; no máximo um segmento com isMainEvent.
+exports.buildCard = asyncHandler(async (req, res) => {
+  const rows = await saveCard(req.universe.id, req.params.id, req.body);
   res.status(201).json(await resolveImages(rows));
+});
+
+// Grava vários cards (planejamento de um período), em ordem cronológica. Cada episódio é
+// independente: falha num não impede os outros. Body: { items: [{ episodeId, replace, segments }] }
+exports.bulkCards = asyncHandler(async (req, res) => {
+  const u = req.universe.id;
+  const eps = await prisma.episode.findMany({
+    where: {
+      id: { in: req.body.items.map((i) => i.episodeId) },
+      show: { universeId: u },
+    },
+    include: {
+      show: true,
+      season: { select: { number: true, startDate: true } },
+    },
+  });
+  const date = new Map(
+    eps.map((e) => [e.id, episodeDate(e, e.season).getTime()]),
+  );
+  const items = [...req.body.items].sort(
+    (a, b) => (date.get(a.episodeId) ?? 0) - (date.get(b.episodeId) ?? 0),
+  );
+  const results = [];
+  for (const item of items) {
+    try {
+      const rows = await saveCard(u, item.episodeId, item);
+      results.push({ episodeId: item.episodeId, ok: true, count: rows.length });
+    } catch (err) {
+      results.push({
+        episodeId: item.episodeId,
+        ok: false,
+        error: err.message,
+      });
+    }
+  }
+  res.json({ results });
+});
+
+// Sugere (sem gravar) o card de UM episódio com IA.
+exports.suggest = asyncHandler(async (req, res) => {
+  const u = req.universe.id;
+  const episode = await prisma.episode.findFirst({
+    where: { id: req.params.id, show: { universeId: u } },
+    include: {
+      show: true,
+      season: { select: { number: true, startDate: true } },
+    },
+  });
+  if (!episode) throw new HttpError(404, 'Registro não encontrado');
+  const universe = await ai.loadUniverse(u);
+  const result = await ai.suggestForEpisode(universe, episode, req.body);
+  res.json(
+    planner.toView(
+      result.ctx,
+      result,
+      episode,
+      episodeDate(episode, episode.season),
+    ),
+  );
+});
+
+// Planejamento de um período com IA: cria o job (202) e o front consulta o progresso.
+exports.suggestRange = asyncHandler(async (req, res) => {
+  await assertIds('season', [req.body.seasonId], req.universe.id);
+  const { job } = await planner.startRange(
+    req.universe.id,
+    req.userId,
+    req.body,
+  );
+  res.status(202).json({ jobId: job.id, total: job.total });
+});
+
+exports.rangeStatus = asyncHandler(async (req, res) => {
+  res.json(planner.getJob(req.universe.id, req.params.jobId));
+});
+
+exports.rangeCancel = asyncHandler(async (req, res) => {
+  res.json(planner.cancelJob(req.universe.id, req.params.jobId));
 });

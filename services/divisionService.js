@@ -220,7 +220,14 @@ async function board(universeId, brandId) {
   const reigns = titleIds.length
     ? await prisma.titleReign.findMany({
         where: { titleId: { in: titleIds }, endDate: null },
-        include: { holders: { include: { wrestler: true, team: true } } },
+        include: {
+          holders: {
+            include: {
+              wrestler: true,
+              team: { include: { members: { select: { wrestlerId: true } } } },
+            },
+          },
+        },
       })
     : [];
   const champs = new Map(reigns.map((r) => [r.titleId, r]));
@@ -231,6 +238,8 @@ async function board(universeId, brandId) {
       teamId: h.teamId,
       name: h.wrestler?.name ?? h.team?.name ?? '?',
       imageUrl: h.wrestler?.imageUrl ?? h.team?.imageUrl ?? null,
+      kind: h.team?.kind ?? null,
+      members: (h.team?.members ?? []).map((m) => m.wrestlerId),
     }));
     return { ...d, champions, championSince: reign?.startDate ?? null };
   });

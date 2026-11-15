@@ -5,6 +5,7 @@ const card = require('../services/cardService');
 const divisions = require('../services/divisionService');
 const reigns = require('../services/reignService');
 const { resultProblem } = require('../services/segmentResult');
+const rivalries = require('../services/rivalryService');
 const tournamentLink = require('../services/tournamentLink');
 const { episodeDate } = require('../services/timeline');
 const { showImpactFor } = require('./activationController');
@@ -28,6 +29,99 @@ const segmentToData = ({ participants, tournamentMatchId, ...rest }, mode) => {
   }
   return rest;
 };
+
+// Envolvidos da rivalidade por lado (A = 1, B = 2): lutadores e/ou duplas/facções.
+const rivalryToData = (body, mode) => {
+  const {
+    sideAWrestlerIds,
+    sideATeamIds,
+    sideBWrestlerIds,
+    sideBTeamIds,
+    ...rest
+  } = body;
+  const sides = [
+    [sideAWrestlerIds, sideATeamIds],
+    [sideBWrestlerIds, sideBTeamIds],
+  ];
+  if (sides.some(([w, t]) => w || t)) {
+    const rows = [];
+    const seenW = new Set();
+    const seenT = new Set();
+    sides.forEach(([wrestlers = [], teams = []], i) => {
+      for (const wrestlerId of wrestlers) {
+        if (seenW.has(wrestlerId)) {
+          throw new HttpError(400, 'Um lutador não pode estar nos dois lados');
+        }
+        seenW.add(wrestlerId);
+        rows.push({ side: i + 1, wrestlerId });
+      }
+      for (const teamId of teams) {
+        if (seenT.has(teamId)) {
+          throw new HttpError(
+            400,
+            'Uma dupla/facção não pode estar nos dois lados',
+          );
+        }
+        seenT.add(teamId);
+        rows.push({ side: i + 1, teamId });
+      }
+    });
+    rest.members = setMany(mode, rows);
+  }
+  return rest;
+};
+
+// Regras da rivalidade na luta: só lutas (MATCH); começar e encerrar não juntos; encerrar exige a
+// rivalidade escolhida (ainda aberta ou já encerrada por esta mesma luta); começar exige 2 lados.
+async function rivalryRules(data, { req, current }) {
+  const type = data.type ?? current?.type;
+  if (type !== 'MATCH') {
+    Object.assign(data, {
+      startsRivalry: false,
+      endsRivalry: false,
+      rivalryId: null,
+    });
+    return;
+  }
+  const starts = data.startsRivalry ?? current?.startsRivalry ?? false;
+  const ends = data.endsRivalry ?? current?.endsRivalry ?? false;
+  if (starts && ends) {
+    throw new HttpError(
+      400,
+      'Uma luta não pode começar e encerrar uma rivalidade ao mesmo tempo',
+    );
+  }
+  if (ends) {
+    const rivalryId = data.rivalryId ?? current?.rivalryId;
+    if (!rivalryId) throw new HttpError(400, 'Escolha a rivalidade a encerrar');
+    const other = await prisma.segment.findFirst({
+      where: { rivalryId, rivalryApplied: true, id: { not: current?.id } },
+      select: { id: true },
+    });
+    if (other) {
+      throw new HttpError(
+        409,
+        'Esta rivalidade já foi encerrada por outra luta',
+      );
+    }
+  } else if (starts) {
+    // a rivalidade desta luta é criada/atualizada pelo servidor
+    delete data.rivalryId;
+    const participants = req.body.participants ?? current?.participants ?? [];
+    if (new Set(participants.map((p) => p.side)).size < 2) {
+      throw new HttpError(
+        400,
+        'Para começar uma rivalidade a luta precisa de lutadores em pelo menos dois lados',
+      );
+    }
+  } else {
+    data.rivalryId = null;
+  }
+  // deixou de começar: a rivalidade criada por ela não fica ligada à luta
+  if (current?.startsRivalry && data.startsRivalry === false && !ends) {
+    data.rivalryId = null;
+  }
+}
 
 const simple = (model, extra = {}) =>
   makeCrud({ model, hasUniverseId: true, orderBy: { name: 'asc' }, ...extra });
@@ -320,12 +414,16 @@ const resources = {
       title: true,
       cardDivision: true,
       tournamentMatch: { include: { tournament: true } },
+      rivalry: {
+        select: { id: true, name: true, isActive: true, winnerSide: true },
+      },
       participants: { include: { wrestler: true } },
     },
     orderBy: { position: 'asc' },
     filters: ['episodeId', 'type', 'titleId', 'isDone'],
     refs: {
       episodeId: 'episode',
+      rivalryId: 'rivalry',
       matchTypeId: 'matchType',
       titleId: 'title',
       cardDivisionId: 'cardDivision',
@@ -354,6 +452,7 @@ const resources = {
         participants: req.body.participants ?? current?.participants ?? [],
       });
       if (problem) throw new HttpError(400, problem);
+      await rivalryRules(data, { req, current });
       const stakes = data.stakes ?? current?.stakes ?? 'NONE';
       const division = data.cardDivisionId ?? current?.cardDivisionId;
       if (stakes !== 'NONE' && !division) {
@@ -371,7 +470,7 @@ const resources = {
     },
     // Luta realizada: aplica o ranking (subida/desafiante) e a troca de campeão (cria o
     // reinado e ajusta a fila). Cada uma acontece uma vez por luta.
-    afterWrite: async (row, { req }) => {
+    afterWrite: async (row, { req, current }) => {
       // Vínculo com a chave do torneio (null = desvincula; ausente = não mexe)
       const tm = req.body.tournamentMatchId;
       if (tm !== undefined) {
@@ -390,6 +489,13 @@ const resources = {
       await tournamentLink.applySegmentResult(row);
       await divisions.applySegmentStakes(row);
       await reigns.applyTitleChangeFromSegment(row, req.universe.id);
+      // rivalidade que a luta começa/encerra (recalculada a cada gravação)
+      const fresh = await rivalries.applySegmentRivalry(
+        row.id,
+        req.universe.id,
+        current,
+      );
+      if (fresh) Object.assign(row, fresh);
     },
     nested: (b) => [
       {
@@ -427,19 +533,40 @@ const resources = {
   }),
 
   rivalry: simple('rivalry', {
-    include: { members: { include: { wrestler: true } } },
+    include: {
+      members: { include: rivalries.memberInclude, orderBy: [{ side: 'asc' }] },
+      segments: {
+        select: {
+          id: true,
+          startsRivalry: true,
+          endsRivalry: true,
+          isDone: true,
+          episode: {
+            select: {
+              id: true,
+              title: true,
+              month: true,
+              week: true,
+              night: true,
+              show: { select: { name: true } },
+            },
+          },
+        },
+      },
+    },
     orderBy: { name: 'asc' },
     filters: ['isActive'],
-    nested: (b) => [{ model: 'wrestler', ids: b.wrestlerIds || [] }],
-    toData: ({ wrestlerIds, ...rest }, mode) => {
-      if (wrestlerIds) {
-        rest.members = setMany(
-          mode,
-          wrestlerIds.map((wrestlerId) => ({ wrestlerId })),
-        );
-      }
-      return rest;
-    },
+    nested: (b) => [
+      {
+        model: 'wrestler',
+        ids: [...(b.sideAWrestlerIds || []), ...(b.sideBWrestlerIds || [])],
+      },
+      {
+        model: 'team',
+        ids: [...(b.sideATeamIds || []), ...(b.sideBTeamIds || [])],
+      },
+    ],
+    toData: rivalryToData,
   }),
 };
 
