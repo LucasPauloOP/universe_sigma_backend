@@ -11,7 +11,10 @@ const schemas = require('../validators/schemas');
 const { episodeInclude, dateOf } = require('./universeClock');
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+// Modelos aposentam e mudam por conta; `-latest` acompanha o Flash atual. GEMINI_MODEL aceita
+// uma lista separada por vírgula: se um modelo não existir (404), tenta o próximo.
+const DEFAULT_MODELS =
+  'gemini-flash-latest,gemini-3.1-flash-lite,gemini-2.5-flash-lite';
 const TIMEOUT_MS = 60000;
 const RETRY_WAITS = [4000, 12000, 30000];
 const ELIGIBLE_CONTRACTS = ['FULL_TIME', 'PART_TIME', 'LEGEND'];
@@ -400,8 +403,11 @@ async function callGemini(prompt, deps = {}) {
   }
   const doFetch = deps.fetchImpl ?? fetch;
   const wait = deps.sleepImpl ?? sleep;
-  const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
-  const url = `${GEMINI_URL}/${model}:generateContent`;
+  const models = (process.env.GEMINI_MODEL || DEFAULT_MODELS)
+    .split(',')
+    .map((m) => m.trim())
+    .filter(Boolean);
+  let modelIndex = 0;
   const body = JSON.stringify({
     systemInstruction: { parts: [{ text: SYSTEM }] },
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -414,6 +420,7 @@ async function callGemini(prompt, deps = {}) {
 
   for (let attempt = 0; ; attempt++) {
     let res;
+    const url = `${GEMINI_URL}/${models[modelIndex]}:generateContent`;
     try {
       res = await doFetch(url, {
         method: 'POST',
@@ -437,8 +444,27 @@ async function callGemini(prompt, deps = {}) {
         'Limite gratuito da IA atingido. Aguarde um pouco e tente de novo (ou reduza o período)',
       );
     }
+    if (res.status === 404 && modelIndex < models.length - 1) {
+      modelIndex += 1; // modelo indisponível para esta conta: tenta o próximo
+      attempt -= 1;
+      continue;
+    }
     if (!res.ok) {
-      throw new HttpError(502, `A IA recusou o pedido (HTTP ${res.status})`);
+      let reason = '';
+      try {
+        reason = (await res.json())?.error?.message ?? '';
+      } catch {
+        /* sem corpo legível */
+      }
+      const hint = [401, 403].includes(res.status)
+        ? ' Confira a GEMINI_API_KEY no servidor: ela precisa ser igual à chave criada no Google AI Studio, inteira e sem aspas.'
+        : res.status === 404
+          ? ' Nenhum dos modelos configurados está disponível: ajuste GEMINI_MODEL.'
+          : '';
+      throw new HttpError(
+        502,
+        `A IA recusou o pedido (HTTP ${res.status})${reason ? `: ${String(reason).slice(0, 200)}` : ''}.${hint}`,
+      );
     }
     const json = await res.json();
     const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
