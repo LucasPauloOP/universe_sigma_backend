@@ -287,6 +287,7 @@ describe('callGemini', () => {
   const OLD = process.env.GEMINI_API_KEY;
   afterEach(() => {
     process.env.GEMINI_API_KEY = OLD;
+    delete process.env.GEMINI_MODEL;
   });
   const reply = (status, body) => ({
     status,
@@ -312,16 +313,63 @@ describe('callGemini', () => {
     expect(fetchImpl.mock.calls[0][1].headers['x-goog-api-key']).toBe('k');
   });
 
-  it('429: tenta de novo e depois desiste com mensagem clara', async () => {
+  it('429: tenta os modelos em rodadas e depois desiste com mensagem clara', async () => {
     process.env.GEMINI_API_KEY = 'k';
+    process.env.GEMINI_MODEL = 'a,b';
     const sleepImpl = jest.fn().mockResolvedValue();
     const fetchImpl = jest.fn().mockResolvedValue(reply(429, {}));
-    await expect(
-      ai.callGemini('x', { fetchImpl, sleepImpl }),
-    ).rejects.toMatchObject({
-      statusCode: 429,
-    });
-    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    try {
+      await expect(
+        ai.callGemini('x', { fetchImpl, sleepImpl }),
+      ).rejects.toMatchObject({ statusCode: 429 });
+    } finally {
+      delete process.env.GEMINI_MODEL;
+    }
+    expect(fetchImpl).toHaveBeenCalledTimes(6); // 2 modelos x 3 rodadas
+    expect(sleepImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('tempo esgotado ou 503: passa para o próximo modelo na hora', async () => {
+    process.env.GEMINI_API_KEY = 'k';
+    process.env.GEMINI_MODEL = 'lento,ocupado,bom';
+    const sleepImpl = jest.fn().mockResolvedValue();
+    const fetchImpl = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('TimeoutError'))
+      .mockResolvedValueOnce(reply(503, {}))
+      .mockResolvedValueOnce(
+        reply(200, {
+          candidates: [{ content: { parts: [{ text: '{"segments":[]}' }] } }],
+        }),
+      );
+    try {
+      await expect(
+        ai.callGemini('x', { fetchImpl, sleepImpl }),
+      ).resolves.toEqual({ segments: [] });
+    } finally {
+      delete process.env.GEMINI_MODEL;
+    }
+    expect(fetchImpl.mock.calls[2][0]).toContain('/bom:');
+    expect(sleepImpl).not.toHaveBeenCalled();
+  });
+
+  it('todos os modelos 404: erro pedindo para ajustar GEMINI_MODEL', async () => {
+    process.env.GEMINI_API_KEY = 'k';
+    process.env.GEMINI_MODEL = 'a,b';
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValue(
+        reply(404, { error: { message: 'no longer available' } }),
+      );
+    try {
+      await expect(ai.callGemini('x', { fetchImpl })).rejects.toMatchObject({
+        statusCode: 502,
+        message: expect.stringMatching(/GEMINI_MODEL.*no longer available/),
+      });
+    } finally {
+      delete process.env.GEMINI_MODEL;
+    }
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it('404: tenta o próximo modelo da lista', async () => {
@@ -361,12 +409,16 @@ describe('callGemini', () => {
 
   it('resposta que não é JSON: 502', async () => {
     process.env.GEMINI_API_KEY = 'k';
+    process.env.GEMINI_MODEL = 'a';
+    const sleepImpl = jest.fn().mockResolvedValue();
     const fetchImpl = jest
       .fn()
       .mockResolvedValue(
         reply(200, { candidates: [{ content: { parts: [{ text: 'oi' }] } }] }),
       );
-    await expect(ai.callGemini('x', { fetchImpl })).rejects.toMatchObject({
+    await expect(
+      ai.callGemini('x', { fetchImpl, sleepImpl }),
+    ).rejects.toMatchObject({
       statusCode: 502,
     });
   });

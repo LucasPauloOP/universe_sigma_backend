@@ -11,12 +11,14 @@ const schemas = require('../validators/schemas');
 const { episodeInclude, dateOf } = require('./universeClock');
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
-// Modelos aposentam e mudam por conta; `-latest` acompanha o Flash atual. GEMINI_MODEL aceita
-// uma lista separada por vírgula: se um modelo não existir (404), tenta o próximo.
+// Modelos aposentam e mudam por conta. GEMINI_MODEL aceita uma lista separada por vírgula:
+// se um modelo não existir (404), estiver sobrecarregado (429/5xx) ou demorar demais, tenta o
+// próximo. Os "flash-lite" respondem em segundos; os Flash "pensantes" (gemini-flash-latest)
+// chegam a passar de 1 minuto com saída estruturada, então ficam fora do padrão.
 const DEFAULT_MODELS =
-  'gemini-flash-latest,gemini-3.1-flash-lite,gemini-2.5-flash-lite';
-const TIMEOUT_MS = 60000;
-const RETRY_WAITS = [4000, 12000, 30000];
+  'gemini-3.1-flash-lite,gemini-3.5-flash-lite,gemini-flash-lite-latest';
+const TIMEOUT_MS = () => Number(process.env.GEMINI_TIMEOUT_MS ?? 30000);
+const RETRY_WAITS = [3000, 10000];
 const ELIGIBLE_CONTRACTS = ['FULL_TIME', 'PART_TIME', 'LEGEND'];
 const RANK_DEPTH = 8;
 const RECENT_FIGHTS = 40;
@@ -407,7 +409,7 @@ async function callGemini(prompt, deps = {}) {
     .split(',')
     .map((m) => m.trim())
     .filter(Boolean);
-  let modelIndex = 0;
+  const gone = new Set(); // modelos que não existem para esta conta (404)
   const body = JSON.stringify({
     systemInstruction: { parts: [{ text: SYSTEM }] },
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -417,66 +419,89 @@ async function callGemini(prompt, deps = {}) {
       responseSchema: RESPONSE_SCHEMA,
     },
   });
-
-  for (let attempt = 0; ; attempt++) {
-    let res;
-    const url = `${GEMINI_URL}/${models[modelIndex]}:generateContent`;
+  const reasonOf = async (res) => {
     try {
-      res = await doFetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-        body,
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
+      return String((await res.json())?.error?.message ?? '').slice(0, 200);
     } catch {
-      throw new HttpError(
-        502,
-        'Não foi possível falar com a IA (tempo esgotado ou rede)',
-      );
+      return '';
     }
-    if (res.status === 429 || res.status === 503) {
-      if (attempt < RETRY_WAITS.length) {
-        await wait(RETRY_WAITS[attempt]);
+  };
+
+  let last = null; // último problema "passageiro" (sobrecarga, tempo, resposta ruim)
+  for (let round = 0; ; round++) {
+    for (const model of models) {
+      if (gone.has(model)) continue;
+      let res;
+      try {
+        res = await doFetch(`${GEMINI_URL}/${model}:generateContent`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': key,
+          },
+          body,
+          signal: AbortSignal.timeout(TIMEOUT_MS()),
+        });
+      } catch {
+        last = { status: 504, model };
+        continue; // tempo esgotado/rede: tenta o próximo modelo
+      }
+      if (res.ok) {
+        const json = await res.json();
+        const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+        try {
+          return JSON.parse(text);
+        } catch {
+          last = { status: 502, model };
+          continue;
+        }
+      }
+      if (res.status === 404) {
+        gone.add(model);
+        last = { status: 404, model, reason: await reasonOf(res) };
         continue;
       }
-      throw new HttpError(
-        429,
-        'Limite gratuito da IA atingido. Aguarde um pouco e tente de novo (ou reduza o período)',
-      );
-    }
-    if (res.status === 404 && modelIndex < models.length - 1) {
-      modelIndex += 1; // modelo indisponível para esta conta: tenta o próximo
-      attempt -= 1;
-      continue;
-    }
-    if (!res.ok) {
-      let reason = '';
-      try {
-        reason = (await res.json())?.error?.message ?? '';
-      } catch {
-        /* sem corpo legível */
+      if (res.status === 429 || res.status >= 500) {
+        last = { status: res.status, model };
+        continue;
       }
+      // 400/401/403: problema da chave ou do pedido; outro modelo não resolve
+      const reason = await reasonOf(res);
       const hint = [401, 403].includes(res.status)
         ? ' Confira a GEMINI_API_KEY no servidor: ela precisa ser igual à chave criada no Google AI Studio, inteira e sem aspas.'
-        : res.status === 404
-          ? ' Nenhum dos modelos configurados está disponível: ajuste GEMINI_MODEL.'
-          : '';
+        : '';
       throw new HttpError(
         502,
-        `A IA recusou o pedido (HTTP ${res.status})${reason ? `: ${String(reason).slice(0, 200)}` : ''}.${hint}`,
+        `A IA recusou o pedido (HTTP ${res.status})${reason ? `: ${reason}` : ''}.${hint}`,
       );
     }
-    const json = await res.json();
-    const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-    try {
-      return JSON.parse(text);
-    } catch {
+
+    if (gone.size === models.length) {
       throw new HttpError(
         502,
-        'A IA devolveu uma resposta que não é JSON válido',
+        `Nenhum dos modelos configurados está disponível (${models.join(', ')}): ajuste GEMINI_MODEL.${last?.reason ? ` ${last.reason}` : ''}`,
       );
     }
+    if (round >= RETRY_WAITS.length) break;
+    await wait(RETRY_WAITS[round]);
   }
+
+  if (last?.status === 429 || last?.status === 503) {
+    throw new HttpError(
+      429,
+      'A IA gratuita está sobrecarregada ou no limite. Aguarde um pouco e tente de novo (ou reduza o período)',
+    );
+  }
+  if (last?.status === 504) {
+    throw new HttpError(
+      502,
+      'A IA demorou demais para responder. Tente de novo em instantes',
+    );
+  }
+  throw new HttpError(
+    502,
+    'A IA devolveu uma resposta inválida. Tente de novo',
+  );
 }
 
 // ───────────── Normalização ─────────────
