@@ -9,6 +9,8 @@ const { randomUUID } = require('crypto');
 const prisma = require('../config/database');
 const HttpError = require('../utils/httpError');
 const { episodeInclude, dateOf } = require('./universeClock');
+const { SEASON_MONTHS } = require('./seasonCalendar');
+const { gameWeek } = require('./timeline');
 const ai = require('./aiSegments');
 
 const MAX_EPISODES = 60;
@@ -18,11 +20,10 @@ const jobs = new Map();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const minInterval = () => Number(process.env.GEMINI_MIN_INTERVAL_MS ?? 4500);
 
-const monthIndex = (d) => d.getUTCFullYear() * 12 + d.getUTCMonth();
-const parseMonth = (s) => {
-  const [y, m] = s.split('-').map(Number);
-  return y * 12 + (m - 1);
-};
+// Posição no calendário do jogo: mês da temporada (maio = 0 ... abril = 11) x 4 semanas.
+// Episódio sem semana (PLE sem semana definida) conta como semana 4, como na linha do tempo.
+const slot = ({ month, week }) =>
+  SEASON_MONTHS.indexOf(month) * 4 + (gameWeek(week) - 1);
 
 function purge() {
   const now = Date.now();
@@ -32,17 +33,22 @@ function purge() {
   }
 }
 
-/** Episódios do período, em ordem cronológica. */
+/**
+ * Episódios do período, em ordem cronológica. O período segue o calendário do jogo:
+ * temporada + mês/semana de início e de fim (inclusive). from/to: { month, week }.
+ */
 async function pickEpisodes(
   universeId,
-  { from, to, showIds, skipPlanned = true },
+  { seasonId, from, to, showIds, skipPlanned = true },
 ) {
-  const start = parseMonth(from);
-  const end = parseMonth(to);
-  if (end < start)
+  const start = slot(from);
+  const end = slot(to);
+  if (end < start) {
     throw new HttpError(400, 'O fim do período é anterior ao início');
+  }
   const all = await prisma.episode.findMany({
     where: {
+      seasonId,
       show: {
         universeId,
         isActive: true,
@@ -53,8 +59,8 @@ async function pickEpisodes(
     include: { ...episodeInclude, show: true },
   });
   const picked = all
+    .filter((e) => slot(e) >= start && slot(e) <= end)
     .map((e) => ({ e, date: dateOf(e) }))
-    .filter(({ date }) => monthIndex(date) >= start && monthIndex(date) <= end)
     .sort(
       (a, b) => a.date - b.date || a.e.show.name.localeCompare(b.e.show.name),
     );
