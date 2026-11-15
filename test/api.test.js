@@ -59,6 +59,77 @@ describe('Auth', () => {
   });
 });
 
+describe('Refresh token', () => {
+  const email = `r.t${stamp}@x.com`;
+  const post = (path, body) => request(app).post(`/api/auth${path}`).send(body);
+  let first;
+
+  it('login devolve token de acesso e refresh token', async () => {
+    const reg = await post('/register', {
+      email,
+      password: '12345678',
+      useTemplate: false,
+    });
+    expect(reg.statusCode).toBe(201);
+    expect(reg.body.refreshToken).toBeDefined();
+    const login = await post('/login', { email, password: '12345678' });
+    expect(login.body.token).toBeDefined();
+    expect(login.body.refreshToken).toBeDefined();
+    first = login.body.refreshToken;
+  });
+
+  it('refresh rotaciona: devolve novo par e o antigo deixa de valer', async () => {
+    const res = await post('/refresh', { refreshToken: first });
+    expect(res.statusCode).toBe(200);
+    expect(res.body.refreshToken).not.toBe(first);
+    const me = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${res.body.token}`);
+    expect(me.body.email).toBe(email);
+
+    // reuso do token antigo: 401 e derruba também o novo (possível roubo)
+    expect((await post('/refresh', { refreshToken: first })).statusCode).toBe(
+      401,
+    );
+    expect(
+      (await post('/refresh', { refreshToken: res.body.refreshToken }))
+        .statusCode,
+    ).toBe(401);
+  });
+
+  it('logout revoga o refresh token', async () => {
+    const login = await post('/login', { email, password: '12345678' });
+    const rt = login.body.refreshToken;
+    expect((await post('/logout', { refreshToken: rt })).statusCode).toBe(204);
+    expect((await post('/refresh', { refreshToken: rt })).statusCode).toBe(401);
+  });
+
+  it('refresh token expirado ou desconhecido dá 401; corpo inválido dá 422', async () => {
+    const login = await post('/login', { email, password: '12345678' });
+    await prisma.refreshToken.updateMany({
+      where: { user: { email } },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    });
+    expect(
+      (await post('/refresh', { refreshToken: login.body.refreshToken }))
+        .statusCode,
+    ).toBe(401);
+    expect(
+      (await post('/refresh', { refreshToken: 'x'.repeat(60) })).statusCode,
+    ).toBe(401);
+    expect((await post('/refresh', {})).statusCode).toBe(422);
+  });
+
+  it('redefinir a senha revoga os refresh tokens existentes', async () => {
+    const login = await post('/login', { email, password: '12345678' });
+    await post('/reset-password', { email, password: 'nova-senha-1' });
+    expect(
+      (await post('/refresh', { refreshToken: login.body.refreshToken }))
+        .statusCode,
+    ).toBe(401);
+  });
+});
+
 describe('Isolamento entre usuários', () => {
   it('usuário B não acessa o universe de A', async () => {
     const res = await request(app)
@@ -419,13 +490,19 @@ describe('Card: ordem livre e main event único', () => {
     expect(await status()).toBe('PLANNED'); // card montado acima
 
     // realizado não é mexido ao remover segmentos
-    await prisma.episode.update({ where: { id: ep }, data: { status: 'DONE' } });
+    await prisma.episode.update({
+      where: { id: ep },
+      data: { status: 'DONE' },
+    });
     const [first] = await cardOf();
     await request(app).delete(`${base()}/segments/${first.id}`).set(authA());
     expect(await status()).toBe('DONE');
 
     // esvaziando o card de um episódio não realizado: sem planejamento
-    await prisma.episode.update({ where: { id: ep }, data: { status: 'PLANNED' } });
+    await prisma.episode.update({
+      where: { id: ep },
+      data: { status: 'PLANNED' },
+    });
     for (const s of await cardOf()) {
       await request(app).delete(`${base()}/segments/${s.id}`).set(authA());
     }

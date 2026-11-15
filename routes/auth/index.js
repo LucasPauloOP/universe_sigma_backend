@@ -18,6 +18,8 @@ router.post(
   validate(schemas.auth.resetPassword),
   auth.resetPassword,
 );
+router.post('/refresh', validate(schemas.auth.refresh), auth.refresh);
+router.post('/logout', validate(schemas.auth.refresh), auth.logout);
 router.get('/me', requireAuth, auth.me);
 
 module.exports = router;

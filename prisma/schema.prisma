@@ -93,6 +93,24 @@ model User {
   name         String?
   createdAt    DateTime   @default(now())
   universes    Universe[]
+  refreshTokens RefreshToken[]
+}
+
+// Refresh token opaco (só o hash SHA-256 fica no banco). Rotativo: cada uso gera
+// um novo e revoga o anterior (replacedById); reuso de um revogado derruba todos.
+model RefreshToken {
+  id           String    @id @default(uuid())
+  userId       String
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  userAgent    String?
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // Um "save" do jogo. Se o site for só seu, você terá um único Universe.

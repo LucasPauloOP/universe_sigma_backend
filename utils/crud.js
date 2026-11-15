@@ -93,6 +93,14 @@ function makeCrud(o) {
   };
 
   return {
+    // Metadados para ferramentas (ex.: scripts/gen-contracts.js); não afeta as rotas.
+    meta: {
+      model,
+      filters,
+      refs,
+      orderBy: orderBy ?? null,
+      include: include ? Object.keys(include) : [],
+    },
     list: asyncHandler(async (req, res) => {
       const where = { ...scopeOf(req) };
       for (const f of filters) {

@@ -7,7 +7,9 @@ const secret = () => {
 };
 
 const signToken = (user) =>
-  jwt.sign({ sub: user.id }, secret(), { expiresIn: '7d' });
+  jwt.sign({ sub: user.id }, secret(), {
+    expiresIn: process.env.ACCESS_TOKEN_TTL || '7d',
+  });
 
 const requireAuth = (req, res, next) => {
   const header = req.headers.authorization || '';
