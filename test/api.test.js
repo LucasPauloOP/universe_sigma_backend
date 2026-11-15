@@ -517,6 +517,226 @@ describe('Card: ordem livre e main event único', () => {
   });
 });
 
+describe('Rivalidades automáticas', () => {
+  const ids = {};
+  const api = {
+    post: (path, body) =>
+      request(app).post(`${base()}/${path}`).set(authA()).send(body),
+    put: (path, body) =>
+      request(app).put(`${base()}/${path}`).set(authA()).send(body),
+    get: (path) => request(app).get(`${base()}/${path}`).set(authA()),
+    del: (path) => request(app).delete(`${base()}/${path}`).set(authA()),
+  };
+  const rivalry = async (id) => (await api.get(`rivalries/${id}`)).body;
+  const seg = (extra) => ({
+    episodeId: ids.ep,
+    type: 'MATCH',
+    matchTypeId: ids.singles,
+    ...extra,
+  });
+  const sides = (winnerSide) => [
+    { wrestlerId: ids.R1, side: 1, isWinner: winnerSide === 1 },
+    { wrestlerId: ids.R3, side: 2, isWinner: winnerSide === 2 },
+    { wrestlerId: ids.R4, side: 2, isWinner: winnerSide === 2 },
+  ];
+
+  it('prepara lutadores, dupla e episódio', async () => {
+    const raw = (await api.get('brands')).body.data.find(
+      (b) => b.name === 'RAW',
+    ).id;
+    for (const name of ['Riv1', 'Riv2', 'Riv3', 'Riv4']) {
+      const r = await api.post('wrestlers', {
+        name,
+        gender: 'M',
+        brandIds: [raw],
+      });
+      expect(r.statusCode).toBe(201);
+      ids[name.replace('iv', '')] = r.body.id;
+    }
+    const team = await api.post('teams', {
+      name: 'Dupla Riv',
+      kind: 'TAG_TEAM',
+      memberIds: [ids.R3, ids.R4],
+    });
+    expect(team.statusCode).toBe(201);
+    ids.team = team.body.id;
+    ids.singles = (await api.get('match-types')).body.data.find(
+      (m) => m.name === 'Singles',
+    ).id;
+    const show = (await api.get('shows')).body.data.find(
+      (x) => x.name === 'RAW',
+    ).id;
+    ids.ep = (
+      await api.get(`episodes?showId=${show}&month=3&week=1`)
+    ).body.data[0].id;
+  });
+
+  it('luta que começa uma rivalidade cria a rivalidade com os lados (dupla como unidade)', async () => {
+    const res = await api.post(
+      'segments',
+      seg({ startsRivalry: true, participants: sides() }),
+    );
+    expect(res.statusCode).toBe(201);
+    ids.startSeg = res.body.id;
+    expect(res.body.rivalryId).toBeTruthy();
+    expect(res.body.rivalry.name).toBe('Riv1 vs Dupla Riv');
+    ids.rivalry = res.body.rivalryId;
+    const r = await rivalry(ids.rivalry);
+    expect(r.isActive).toBe(true);
+    expect(r.startDate).toBeTruthy();
+    expect(r.members).toHaveLength(2);
+    expect(r.members.find((m) => m.side === 1).wrestlerId).toBe(ids.R1);
+    expect(r.members.find((m) => m.side === 2).teamId).toBe(ids.team);
+    expect(r.segments).toHaveLength(1);
+  });
+
+  it('começar rivalidade exige lutadores em dois lados', async () => {
+    const res = await api.post(
+      'segments',
+      seg({
+        startsRivalry: true,
+        participants: [{ wrestlerId: ids.R1, side: 1 }],
+      }),
+    );
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('reconhece a rivalidade quando a luta montada tem os dois lados', async () => {
+    const hit = await api.get(
+      `rivalries/match?wrestlerIds=${ids.R1},${ids.R3},${ids.R4}`,
+    );
+    expect(hit.body.map((r) => r.id)).toContain(ids.rivalry);
+    const miss = await api.get(
+      `rivalries/match?wrestlerIds=${ids.R1},${ids.R2}`,
+    );
+    expect(miss.body.map((r) => r.id)).not.toContain(ids.rivalry);
+    const partial = await api.get(
+      `rivalries/match?wrestlerIds=${ids.R1},${ids.R3}`,
+    );
+    expect(partial.body.map((r) => r.id)).not.toContain(ids.rivalry); // dupla incompleta
+  });
+
+  it('regras: começar e encerrar juntos / encerrar sem rivalidade', async () => {
+    const both = await api.post(
+      'segments',
+      seg({
+        startsRivalry: true,
+        endsRivalry: true,
+        rivalryId: ids.rivalry,
+        participants: sides(),
+      }),
+    );
+    expect(both.statusCode).toBe(400);
+    const none = await api.post(
+      'segments',
+      seg({ endsRivalry: true, participants: sides() }),
+    );
+    expect(none.statusCode).toBe(400);
+  });
+
+  it('encerrar só vale ao finalizar com vencedor: o lado vencedor vira ganhador', async () => {
+    const planned = await api.post(
+      'segments',
+      seg({ endsRivalry: true, rivalryId: ids.rivalry, participants: sides() }),
+    );
+    expect(planned.statusCode).toBe(201);
+    ids.endSeg = planned.body.id;
+    expect((await rivalry(ids.rivalry)).isActive).toBe(true); // ainda não realizada
+
+    const done = await api.put(`segments/${ids.endSeg}`, {
+      isDone: true,
+      finishType: 'PINFALL',
+      participants: sides(1),
+    });
+    expect(done.statusCode).toBe(200);
+    expect(done.body.rivalryApplied).toBe(true);
+    const r = await rivalry(ids.rivalry);
+    expect(r.isActive).toBe(false);
+    expect(r.winnerSide).toBe(1);
+    expect(r.endDate).toBeTruthy();
+  });
+
+  it('mudar o vencedor recalcula o ganhador; desfazer o resultado reabre', async () => {
+    const swap = await api.put(`segments/${ids.endSeg}`, {
+      participants: sides(2),
+    });
+    expect(swap.statusCode).toBe(200);
+    expect((await rivalry(ids.rivalry)).winnerSide).toBe(2);
+
+    await api.put(`segments/${ids.endSeg}`, { isDone: false });
+    const r = await rivalry(ids.rivalry);
+    expect(r.isActive).toBe(true);
+    expect(r.winnerSide).toBeNull();
+    expect(r.endDate).toBeNull();
+  });
+
+  it('empate encerra sem ganhador; outra luta não pode encerrar a mesma rivalidade', async () => {
+    await api.put(`segments/${ids.endSeg}`, {
+      isDone: true,
+      isDraw: true,
+      finishType: null,
+      participants: sides(),
+    });
+    const r = await rivalry(ids.rivalry);
+    expect(r.isActive).toBe(false);
+    expect(r.winnerSide).toBeNull();
+    const other = await api.post(
+      'segments',
+      seg({ endsRivalry: true, rivalryId: ids.rivalry, participants: sides() }),
+    );
+    expect(other.statusCode).toBe(409);
+  });
+
+  it('apagar a luta que encerrou reabre a rivalidade; apagar a que começou apaga a rivalidade', async () => {
+    expect((await api.del(`segments/${ids.endSeg}`)).statusCode).toBe(204);
+    expect((await rivalry(ids.rivalry)).isActive).toBe(true);
+    expect((await api.del(`segments/${ids.startSeg}`)).statusCode).toBe(204);
+    expect((await api.get(`rivalries/${ids.rivalry}`)).statusCode).toBe(404);
+  });
+
+  it('desmarcar "começa rivalidade" remove a rivalidade criada (se ninguém mais a usa)', async () => {
+    const res = await api.post(
+      'segments',
+      seg({ startsRivalry: true, participants: sides() }),
+    );
+    const rid = res.body.rivalryId;
+    expect(rid).toBeTruthy();
+    const upd = await api.put(`segments/${res.body.id}`, {
+      startsRivalry: false,
+    });
+    expect(upd.statusCode).toBe(200);
+    expect(upd.body.rivalryId).toBeNull();
+    expect((await api.get(`rivalries/${rid}`)).statusCode).toBe(404);
+  });
+
+  it('cadastro manual: lados com lutadores e duplas; mesmo lutador nos dois lados é recusado', async () => {
+    const ok = await api.post('rivalries', {
+      name: 'Manual',
+      sideAWrestlerIds: [ids.R1, ids.R2],
+      sideBTeamIds: [ids.team],
+    });
+    expect(ok.statusCode).toBe(201);
+    expect(ok.body.members).toHaveLength(3);
+    expect(ok.body.members.filter((m) => m.side === 2)[0].teamId).toBe(
+      ids.team,
+    );
+    const bad = await api.post('rivalries', {
+      name: 'Inválida',
+      sideAWrestlerIds: [ids.R1],
+      sideBWrestlerIds: [ids.R1],
+    });
+    expect(bad.statusCode).toBe(400);
+    const upd = await api.put(`rivalries/${ok.body.id}`, {
+      sideAWrestlerIds: [ids.R2],
+      sideBTeamIds: [ids.team],
+      winnerSide: 1,
+    });
+    expect(upd.statusCode).toBe(200);
+    expect(upd.body.members).toHaveLength(2);
+    expect(upd.body.winnerSide).toBe(1);
+  });
+});
+
 describe('Reset do universe', () => {
   it('exige confirmação', async () => {
     const res = await request(app)

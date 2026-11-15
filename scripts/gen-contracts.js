@@ -191,6 +191,8 @@ const NOTES = {
   'GET /api/universes/:universeId/card-divisions/board':
     'Filtro opcional ?brandId=. Divisões com fila e campeão.',
   'POST /api/universes/:universeId/card-divisions/defaults': '201 {created}.',
+  'GET /api/universes/:universeId/rivalries/match':
+    '?wrestlerIds=a,b,c (lutadores da luta montada). Rivalidades ATIVAS reconhecidas (dois lados com envolvidos escalados; dupla = todos os integrantes, facção = um). Cada uma com members (wrestler/team) e segments. Segmento MATCH aceita startsRivalry (cria a rivalidade pelos lados), endsRivalry + rivalryId (ao finalizar com resultado fecha e define winnerSide; empate = sem ganhador).',
   'GET /api/universes/:universeId/wrestlers/:id/record':
     '200 {wrestlerId, matches, wins, losses, draws, titleReigns}.',
   'GET /api/universes/:universeId/titles/:id/history':
