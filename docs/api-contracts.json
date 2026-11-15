@@ -1,0 +1,5292 @@
+{
+  "conventions": {
+    "base": "/api",
+    "auth": "Authorization: Bearer <token>. token = JWT de acesso (padrão 7d). refreshToken opaco (90d) via POST /api/auth/refresh.",
+    "list": "GET de coleção -> {data:[], total, limit, offset}. ?limit (padrão 100, máx. 500) e ?offset. Filtros: apenas os listados em `filters` de cada recurso (true/false e dígitos são convertidos).",
+    "errors": "{success:false, message, details?:string[]}. 422 validação (Joi), 401 auth, 404, 409 unicidade, 400 referência inválida.",
+    "write": "POST 201 devolve o objeto. PUT e PATCH são equivalentes (todos os campos opcionais, ao menos um). DELETE 204 sem corpo. Campos desconhecidos são descartados.",
+    "images": "`imageUrl` chega como URL assinada (expira em 1h). Para gravar, envie a chave `storage:<universeId>/<uuid>.<ext>` do upload; uma URL assinada do próprio bucket também é aceita e convertida.",
+    "dates": "ISO 8601. Calendário do jogo: meses maio->abril, 4 semanas por mês."
+  },
+  "enums": {
+    "ContractType": [
+      "FULL_TIME",
+      "PART_TIME",
+      "LEGEND",
+      "FREE_AGENT",
+      "MANAGER",
+      "GM",
+      "CELEBRITY",
+      "VARIANT"
+    ],
+    "EditStatus": [
+      "COMPLETE",
+      "NEEDED"
+    ],
+    "EpisodeStatus": [
+      "UNPLANNED",
+      "PLANNED",
+      "DONE"
+    ],
+    "FinishType": [
+      "PINFALL",
+      "SUBMISSION",
+      "COUNTOUT",
+      "DQ",
+      "OTHER"
+    ],
+    "Gender": [
+      "M",
+      "W"
+    ],
+    "SegmentStakes": [
+      "NONE",
+      "RANKING",
+      "CONTENDER"
+    ],
+    "SegmentType": [
+      "MATCH",
+      "PROMO",
+      "OTHER"
+    ],
+    "ShowKind": [
+      "WEEKLY",
+      "PLE",
+      "SPECIAL"
+    ],
+    "TeamKind": [
+      "TAG_TEAM",
+      "FACTION"
+    ],
+    "TournamentFormat": [
+      "SINGLE_ELIMINATION",
+      "ROUND_ROBIN"
+    ],
+    "TournamentStatus": [
+      "PLANNED",
+      "ONGOING",
+      "FINISHED"
+    ]
+  },
+  "models": {
+    "Alignment": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universeId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "description",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "isActive",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universe",
+        "type": "Universe",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestlers",
+        "type": "Wrestler",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "Brand": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universeId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "gm",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "color",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "description",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "imageUrl",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "isActive",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universe",
+        "type": "Universe",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestlers",
+        "type": "WrestlerBrand",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "titles",
+        "type": "Title",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "shows",
+        "type": "Show",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "divisionLinks",
+        "type": "CardDivisionBrand",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "CardDivision": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universeId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "titleId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "name",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "gender",
+        "type": "Gender",
+        "kind": "enum",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "order",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "isActive",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universe",
+        "type": "Universe",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "title",
+        "type": "Title",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "brands",
+        "type": "CardDivisionBrand",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "entries",
+        "type": "CardDivisionEntry",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "segments",
+        "type": "Segment",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "CardDivisionBrand": [
+      {
+        "name": "divisionId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "brandId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "division",
+        "type": "CardDivision",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "brand",
+        "type": "Brand",
+        "kind": "object",
+        "list": false,
+        "required": true
+      }
+    ],
+    "CardDivisionEntry": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "divisionId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "position",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestlerId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "teamId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "division",
+        "type": "CardDivision",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestler",
+        "type": "Wrestler",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "team",
+        "type": "Team",
+        "kind": "object",
+        "list": false,
+        "required": false
+      }
+    ],
+    "Division": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universeId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "description",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "isActive",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universe",
+        "type": "Universe",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestlers",
+        "type": "Wrestler",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "Episode": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "showId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "seasonId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "title",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "month",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "week",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "night",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "airDate",
+        "type": "DateTime",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "status",
+        "type": "EpisodeStatus",
+        "kind": "enum",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "imageUrl",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "notes",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "show",
+        "type": "Show",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "season",
+        "type": "Season",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "segments",
+        "type": "Segment",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "MatchType": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universeId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universe",
+        "type": "Universe",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "segments",
+        "type": "Segment",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "tournamentMatches",
+        "type": "TournamentMatch",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "RefreshToken": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "userId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "tokenHash",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "expiresAt",
+        "type": "DateTime",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "revokedAt",
+        "type": "DateTime",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "replacedById",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "userAgent",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "createdAt",
+        "type": "DateTime",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "user",
+        "type": "User",
+        "kind": "object",
+        "list": false,
+        "required": true
+      }
+    ],
+    "ReignHolder": [
+      {
+        "name": "reignId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestlerId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "teamId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "reign",
+        "type": "TitleReign",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestler",
+        "type": "Wrestler",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "team",
+        "type": "Team",
+        "kind": "object",
+        "list": false,
+        "required": false
+      }
+    ],
+    "Rivalry": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universeId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "description",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "isActive",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "startDate",
+        "type": "DateTime",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "endDate",
+        "type": "DateTime",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "universe",
+        "type": "Universe",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "members",
+        "type": "RivalryMember",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "RivalryMember": [
+      {
+        "name": "rivalryId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestlerId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "rivalry",
+        "type": "Rivalry",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestler",
+        "type": "Wrestler",
+        "kind": "object",
+        "list": false,
+        "required": true
+      }
+    ],
+    "Season": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universeId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "number",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "startDate",
+        "type": "DateTime",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "startMonth",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "universe",
+        "type": "Universe",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "episodes",
+        "type": "Episode",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "tournaments",
+        "type": "Tournament",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "Segment": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "episodeId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "position",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "type",
+        "type": "SegmentType",
+        "kind": "enum",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "matchTypeId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "titleId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "titleChanged",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "isMainEvent",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "finishType",
+        "type": "FinishType",
+        "kind": "enum",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "isDone",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "isDraw",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "notes",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "cardDivisionId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "stakes",
+        "type": "SegmentStakes",
+        "kind": "enum",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "rankingApplied",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "episode",
+        "type": "Episode",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "matchType",
+        "type": "MatchType",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "title",
+        "type": "Title",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "cardDivision",
+        "type": "CardDivision",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "participants",
+        "type": "SegmentParticipant",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "tournamentMatch",
+        "type": "TournamentMatch",
+        "kind": "object",
+        "list": false,
+        "required": false
+      }
+    ],
+    "SegmentParticipant": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "segmentId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestlerId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "side",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "isWinner",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "segment",
+        "type": "Segment",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestler",
+        "type": "Wrestler",
+        "kind": "object",
+        "list": false,
+        "required": true
+      }
+    ],
+    "Show": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universeId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "brandId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "name",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "kind",
+        "type": "ShowKind",
+        "kind": "enum",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "weekday",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "ppvMonth",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "ppvWeek",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "nights",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "imageUrl",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "isActive",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universe",
+        "type": "Universe",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "brand",
+        "type": "Brand",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "episodes",
+        "type": "Episode",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "Team": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universeId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "kind",
+        "type": "TeamKind",
+        "kind": "enum",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "imageUrl",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "factionId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "universe",
+        "type": "Universe",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "faction",
+        "type": "Team",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "subTeams",
+        "type": "Team",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "members",
+        "type": "TeamMember",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "entries",
+        "type": "TournamentEntrant",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "reigns",
+        "type": "ReignHolder",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "baselines",
+        "type": "TitleBaseline",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "divisionEntries",
+        "type": "CardDivisionEntry",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "TeamMember": [
+      {
+        "name": "teamId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestlerId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "team",
+        "type": "Team",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestler",
+        "type": "Wrestler",
+        "kind": "object",
+        "list": false,
+        "required": true
+      }
+    ],
+    "Title": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universeId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "brandId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "name",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "gender",
+        "type": "Gender",
+        "kind": "enum",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "isTag",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "isActive",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "imageUrl",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "universe",
+        "type": "Universe",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "brand",
+        "type": "Brand",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "reigns",
+        "type": "TitleReign",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "baselines",
+        "type": "TitleBaseline",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "segments",
+        "type": "Segment",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "cardDivisions",
+        "type": "CardDivision",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "TitleBaseline": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "titleId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestlerId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "teamId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "reigns",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "days",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "note",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "title",
+        "type": "Title",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestler",
+        "type": "Wrestler",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "team",
+        "type": "Team",
+        "kind": "object",
+        "list": false,
+        "required": false
+      }
+    ],
+    "TitleReign": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "titleId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "startDate",
+        "type": "DateTime",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "endDate",
+        "type": "DateTime",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "wonAtSegmentId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "title",
+        "type": "Title",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "holders",
+        "type": "ReignHolder",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "Tournament": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universeId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "seasonId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "name",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "format",
+        "type": "TournamentFormat",
+        "kind": "enum",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "size",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "firstRoundMatches",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "firstRoundPerMatch",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "isTag",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "status",
+        "type": "TournamentStatus",
+        "kind": "enum",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "startDate",
+        "type": "DateTime",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "endDate",
+        "type": "DateTime",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "imageUrl",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "notes",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "universe",
+        "type": "Universe",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "season",
+        "type": "Season",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "entrants",
+        "type": "TournamentEntrant",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "matches",
+        "type": "TournamentMatch",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "TournamentEntrant": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "tournamentId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "seed",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "startRound",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestlerId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "teamId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "tournament",
+        "type": "Tournament",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestler",
+        "type": "Wrestler",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "team",
+        "type": "Team",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "asA",
+        "type": "TournamentMatch",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "asB",
+        "type": "TournamentMatch",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "wins",
+        "type": "TournamentMatch",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "extraIn",
+        "type": "TournamentMatchEntrant",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "TournamentMatch": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "tournamentId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "round",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "slot",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "groupName",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "entrantAId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "entrantBId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "winnerId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "segmentId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "matchTypeId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "tournament",
+        "type": "Tournament",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "entrantA",
+        "type": "TournamentEntrant",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "entrantB",
+        "type": "TournamentEntrant",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "winner",
+        "type": "TournamentEntrant",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "segment",
+        "type": "Segment",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "matchType",
+        "type": "MatchType",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "extras",
+        "type": "TournamentMatchEntrant",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "TournamentMatchEntrant": [
+      {
+        "name": "matchId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "entrantId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "position",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "match",
+        "type": "TournamentMatch",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "entrant",
+        "type": "TournamentEntrant",
+        "kind": "object",
+        "list": false,
+        "required": true
+      }
+    ],
+    "Universe": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "userId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "description",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "createdAt",
+        "type": "DateTime",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "user",
+        "type": "User",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "brands",
+        "type": "Brand",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "wrestlers",
+        "type": "Wrestler",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "teams",
+        "type": "Team",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "titles",
+        "type": "Title",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "shows",
+        "type": "Show",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "seasons",
+        "type": "Season",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "matchTypes",
+        "type": "MatchType",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "tournaments",
+        "type": "Tournament",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "alignments",
+        "type": "Alignment",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "divisions",
+        "type": "Division",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "weightClasses",
+        "type": "WeightClass",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "rivalries",
+        "type": "Rivalry",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "cardDivisions",
+        "type": "CardDivision",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "User": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "email",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "passwordHash",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "createdAt",
+        "type": "DateTime",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universes",
+        "type": "Universe",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "refreshTokens",
+        "type": "RefreshToken",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "WeightClass": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universeId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "description",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "isActive",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universe",
+        "type": "Universe",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestlers",
+        "type": "Wrestler",
+        "kind": "object",
+        "list": true,
+        "required": true
+      }
+    ],
+    "Wrestler": [
+      {
+        "name": "id",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universeId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "gender",
+        "type": "Gender",
+        "kind": "enum",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "contractType",
+        "type": "ContractType",
+        "kind": "enum",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "alignmentId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "divisionId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "weightClassId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "overall",
+        "type": "Int",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "finisher",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "signature",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "hometown",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "isCustomCharacter",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "hasContract",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "isInjured",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "isActive",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "inTagDivision",
+        "type": "Boolean",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "editStatus",
+        "type": "EditStatus",
+        "kind": "enum",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "imageUrl",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "notes",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "createdAt",
+        "type": "DateTime",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "universe",
+        "type": "Universe",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "brands",
+        "type": "WrestlerBrand",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "teams",
+        "type": "TeamMember",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "participants",
+        "type": "SegmentParticipant",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "reigns",
+        "type": "ReignHolder",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "baselines",
+        "type": "TitleBaseline",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "entries",
+        "type": "TournamentEntrant",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "rivalries",
+        "type": "RivalryMember",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "divisionEntries",
+        "type": "CardDivisionEntry",
+        "kind": "object",
+        "list": true,
+        "required": true
+      },
+      {
+        "name": "alignment",
+        "type": "Alignment",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "division",
+        "type": "Division",
+        "kind": "object",
+        "list": false,
+        "required": false
+      },
+      {
+        "name": "weightClass",
+        "type": "WeightClass",
+        "kind": "object",
+        "list": false,
+        "required": false
+      }
+    ],
+    "WrestlerBrand": [
+      {
+        "name": "wrestlerId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "brandId",
+        "type": "String",
+        "kind": "scalar",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "wrestler",
+        "type": "Wrestler",
+        "kind": "object",
+        "list": false,
+        "required": true
+      },
+      {
+        "name": "brand",
+        "type": "Brand",
+        "kind": "object",
+        "list": false,
+        "required": true
+      }
+    ]
+  },
+  "resources": {
+    "alignments": {
+      "path": "/api/universes/:universeId/alignments",
+      "model": "Alignment",
+      "filters": [],
+      "refs": {},
+      "orderBy": {
+        "name": "asc"
+      },
+      "includes": [],
+      "create": {
+        "type": "object",
+        "fields": {
+          "description": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 500
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "max": 100
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "description": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 500
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "max": 100
+          }
+        }
+      }
+    },
+    "brands": {
+      "path": "/api/universes/:universeId/brands",
+      "model": "Brand",
+      "filters": [
+        "isActive"
+      ],
+      "refs": {},
+      "orderBy": {
+        "name": "asc"
+      },
+      "includes": [],
+      "create": {
+        "type": "object",
+        "fields": {
+          "color": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 30
+          },
+          "confirm": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 500
+          },
+          "gm": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 100
+          },
+          "imageUrl": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "format": "uri",
+            "max": 2048
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "max": 100
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "color": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 30
+          },
+          "confirm": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 500
+          },
+          "gm": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 100
+          },
+          "imageUrl": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "format": "uri",
+            "max": 2048
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "max": 100
+          }
+        }
+      }
+    },
+    "card-divisions": {
+      "path": "/api/universes/:universeId/card-divisions",
+      "model": "CardDivision",
+      "filters": [
+        "gender",
+        "titleId",
+        "isActive"
+      ],
+      "refs": {
+        "titleId": "title"
+      },
+      "orderBy": [
+        {
+          "order": "asc"
+        },
+        {
+          "name": "asc"
+        }
+      ],
+      "includes": [
+        "brands",
+        "title",
+        "entries"
+      ],
+      "create": {
+        "type": "object",
+        "fields": {
+          "brandIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "M",
+              "W"
+            ],
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "max": 100
+          },
+          "order": {
+            "type": "number",
+            "integer": true,
+            "min": 0,
+            "max": 1000
+          },
+          "titleId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "brandIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "M",
+              "W"
+            ],
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "max": 100
+          },
+          "order": {
+            "type": "number",
+            "integer": true,
+            "min": 0,
+            "max": 1000
+          },
+          "titleId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "divisions": {
+      "path": "/api/universes/:universeId/divisions",
+      "model": "Division",
+      "filters": [],
+      "refs": {},
+      "orderBy": {
+        "name": "asc"
+      },
+      "includes": [],
+      "create": {
+        "type": "object",
+        "fields": {
+          "description": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 500
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "max": 100
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "description": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 500
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "max": 100
+          }
+        }
+      }
+    },
+    "episodes": {
+      "path": "/api/universes/:universeId/episodes",
+      "model": "Episode",
+      "filters": [
+        "showId",
+        "seasonId",
+        "month",
+        "week",
+        "status"
+      ],
+      "refs": {
+        "showId": "show",
+        "seasonId": "season"
+      },
+      "orderBy": [
+        {
+          "month": "asc"
+        },
+        {
+          "week": "asc"
+        }
+      ],
+      "includes": [
+        "show",
+        "season",
+        "_count"
+      ],
+      "create": {
+        "type": "object",
+        "fields": {
+          "airDate": {
+            "type": "date",
+            "nullable": true,
+            "format": "iso"
+          },
+          "imageUrl": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "format": "uri",
+            "max": 2048
+          },
+          "month": {
+            "type": "number",
+            "required": true,
+            "integer": true,
+            "min": 1,
+            "max": 12
+          },
+          "night": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 1,
+            "max": 2
+          },
+          "notes": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 2000
+          },
+          "seasonId": {
+            "type": "string",
+            "required": true,
+            "format": "uuid"
+          },
+          "showId": {
+            "type": "string",
+            "required": true,
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "UNPLANNED",
+              "PLANNED",
+              "DONE"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 150
+          },
+          "week": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 1,
+            "max": 4
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "airDate": {
+            "type": "date",
+            "nullable": true,
+            "format": "iso"
+          },
+          "imageUrl": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "format": "uri",
+            "max": 2048
+          },
+          "month": {
+            "type": "number",
+            "integer": true,
+            "min": 1,
+            "max": 12
+          },
+          "night": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 1,
+            "max": 2
+          },
+          "notes": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 2000
+          },
+          "seasonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "showId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "UNPLANNED",
+              "PLANNED",
+              "DONE"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 150
+          },
+          "week": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 1,
+            "max": 4
+          }
+        }
+      }
+    },
+    "match-types": {
+      "path": "/api/universes/:universeId/match-types",
+      "model": "MatchType",
+      "filters": [],
+      "refs": {},
+      "orderBy": {
+        "name": "asc"
+      },
+      "includes": [],
+      "create": {
+        "type": "object",
+        "fields": {
+          "name": {
+            "type": "string",
+            "required": true,
+            "max": 100
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "name": {
+            "type": "string",
+            "max": 100
+          }
+        }
+      }
+    },
+    "rivalries": {
+      "path": "/api/universes/:universeId/rivalries",
+      "model": "Rivalry",
+      "filters": [
+        "isActive"
+      ],
+      "refs": {},
+      "orderBy": {
+        "name": "asc"
+      },
+      "includes": [
+        "members"
+      ],
+      "create": {
+        "type": "object",
+        "fields": {
+          "description": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 1000
+          },
+          "endDate": {
+            "type": "date",
+            "nullable": true,
+            "format": "iso"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "max": 100
+          },
+          "startDate": {
+            "type": "date",
+            "nullable": true,
+            "format": "iso"
+          },
+          "wrestlerIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "description": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 1000
+          },
+          "endDate": {
+            "type": "date",
+            "nullable": true,
+            "format": "iso"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "max": 100
+          },
+          "startDate": {
+            "type": "date",
+            "nullable": true,
+            "format": "iso"
+          },
+          "wrestlerIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      }
+    },
+    "seasons": {
+      "path": "/api/universes/:universeId/seasons",
+      "model": "Season",
+      "filters": [],
+      "refs": {},
+      "orderBy": {
+        "number": "asc"
+      },
+      "includes": [],
+      "create": {
+        "type": "object",
+        "fields": {
+          "name": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 100
+          },
+          "number": {
+            "type": "number",
+            "required": true,
+            "integer": true,
+            "min": 1
+          },
+          "startDate": {
+            "type": "date",
+            "nullable": true,
+            "format": "iso"
+          },
+          "startMonth": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 1,
+            "max": 12
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "name": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 100
+          },
+          "number": {
+            "type": "number",
+            "integer": true,
+            "min": 1
+          },
+          "startDate": {
+            "type": "date",
+            "nullable": true,
+            "format": "iso"
+          },
+          "startMonth": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 1,
+            "max": 12
+          }
+        }
+      }
+    },
+    "segments": {
+      "path": "/api/universes/:universeId/segments",
+      "model": "Segment",
+      "filters": [
+        "episodeId",
+        "type",
+        "titleId",
+        "isDone"
+      ],
+      "refs": {
+        "episodeId": "episode",
+        "matchTypeId": "matchType",
+        "titleId": "title",
+        "cardDivisionId": "cardDivision"
+      },
+      "orderBy": {
+        "position": "asc"
+      },
+      "includes": [
+        "matchType",
+        "title",
+        "cardDivision",
+        "tournamentMatch",
+        "participants"
+      ],
+      "create": {
+        "type": "object",
+        "fields": {
+          "cardDivisionId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "episodeId": {
+            "type": "string",
+            "required": true,
+            "format": "uuid"
+          },
+          "finishType": {
+            "type": "string",
+            "enum": [
+              "PINFALL",
+              "SUBMISSION",
+              "COUNTOUT",
+              "DQ",
+              "OTHER"
+            ],
+            "nullable": true
+          },
+          "isDone": {
+            "type": "boolean"
+          },
+          "isDraw": {
+            "type": "boolean"
+          },
+          "isMainEvent": {
+            "type": "boolean"
+          },
+          "matchTypeId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 2000
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "fields": {
+                "isWinner": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "side": {
+                  "type": "number",
+                  "default": 1,
+                  "integer": true,
+                  "min": 1
+                },
+                "wrestlerId": {
+                  "type": "string",
+                  "required": true,
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "position": {
+            "type": "number",
+            "integer": true,
+            "min": 1
+          },
+          "stakes": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "RANKING",
+              "CONTENDER"
+            ]
+          },
+          "titleChanged": {
+            "type": "boolean"
+          },
+          "titleId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "tournamentMatchId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "required": true,
+            "enum": [
+              "MATCH",
+              "PROMO",
+              "OTHER"
+            ]
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "cardDivisionId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "episodeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "finishType": {
+            "type": "string",
+            "enum": [
+              "PINFALL",
+              "SUBMISSION",
+              "COUNTOUT",
+              "DQ",
+              "OTHER"
+            ],
+            "nullable": true
+          },
+          "isDone": {
+            "type": "boolean"
+          },
+          "isDraw": {
+            "type": "boolean"
+          },
+          "isMainEvent": {
+            "type": "boolean"
+          },
+          "matchTypeId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 2000
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "fields": {
+                "isWinner": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "side": {
+                  "type": "number",
+                  "default": 1,
+                  "integer": true,
+                  "min": 1
+                },
+                "wrestlerId": {
+                  "type": "string",
+                  "required": true,
+                  "format": "uuid"
+                }
+              }
+            }
+          },
+          "position": {
+            "type": "number",
+            "integer": true,
+            "min": 1
+          },
+          "stakes": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "RANKING",
+              "CONTENDER"
+            ]
+          },
+          "titleChanged": {
+            "type": "boolean"
+          },
+          "titleId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "tournamentMatchId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "MATCH",
+              "PROMO",
+              "OTHER"
+            ]
+          }
+        }
+      }
+    },
+    "shows": {
+      "path": "/api/universes/:universeId/shows",
+      "model": "Show",
+      "filters": [
+        "brandId",
+        "kind",
+        "isActive"
+      ],
+      "refs": {
+        "brandId": "brand"
+      },
+      "orderBy": {
+        "name": "asc"
+      },
+      "includes": [
+        "brand"
+      ],
+      "create": {
+        "type": "object",
+        "fields": {
+          "brandId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "confirm": {
+            "type": "boolean"
+          },
+          "imageUrl": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "format": "uri",
+            "max": 2048
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string",
+            "required": true,
+            "enum": [
+              "WEEKLY",
+              "PLE",
+              "SPECIAL"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "max": 100
+          },
+          "nights": {
+            "type": "number",
+            "integer": true,
+            "min": 1,
+            "max": 2
+          },
+          "ppvMonth": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 1,
+            "max": 12
+          },
+          "ppvWeek": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 1,
+            "max": 4
+          },
+          "weekday": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 0,
+            "max": 6
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "brandId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "confirm": {
+            "type": "boolean"
+          },
+          "imageUrl": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "format": "uri",
+            "max": 2048
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "WEEKLY",
+              "PLE",
+              "SPECIAL"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "max": 100
+          },
+          "nights": {
+            "type": "number",
+            "integer": true,
+            "min": 1,
+            "max": 2
+          },
+          "ppvMonth": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 1,
+            "max": 12
+          },
+          "ppvWeek": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 1,
+            "max": 4
+          },
+          "weekday": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 0,
+            "max": 6
+          }
+        }
+      }
+    },
+    "teams": {
+      "path": "/api/universes/:universeId/teams",
+      "model": "Team",
+      "filters": [
+        "kind",
+        "factionId"
+      ],
+      "refs": {
+        "factionId": "team"
+      },
+      "orderBy": {
+        "name": "asc"
+      },
+      "includes": [
+        "members",
+        "faction",
+        "subTeams"
+      ],
+      "create": {
+        "type": "object",
+        "fields": {
+          "factionId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "imageUrl": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "format": "uri",
+            "max": 2048
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "TAG_TEAM",
+              "FACTION"
+            ]
+          },
+          "memberIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "max": 100
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "factionId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "imageUrl": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "format": "uri",
+            "max": 2048
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "TAG_TEAM",
+              "FACTION"
+            ]
+          },
+          "memberIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "name": {
+            "type": "string",
+            "max": 100
+          }
+        }
+      }
+    },
+    "title-baselines": {
+      "path": "/api/universes/:universeId/title-baselines",
+      "model": "TitleBaseline",
+      "filters": [
+        "titleId"
+      ],
+      "refs": {
+        "titleId": "title",
+        "wrestlerId": "wrestler",
+        "teamId": "team"
+      },
+      "orderBy": {
+        "reigns": "desc"
+      },
+      "includes": [
+        "title",
+        "wrestler",
+        "team"
+      ],
+      "create": {
+        "type": "object",
+        "fields": {
+          "days": {
+            "type": "number",
+            "required": true,
+            "integer": true,
+            "min": 0,
+            "max": 1000000
+          },
+          "note": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 500
+          },
+          "reigns": {
+            "type": "number",
+            "required": true,
+            "integer": true,
+            "min": 0,
+            "max": 1000
+          },
+          "teamId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "titleId": {
+            "type": "string",
+            "required": true,
+            "format": "uuid"
+          },
+          "wrestlerId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          }
+        },
+        "dependencies": [
+          {
+            "rel": "xor",
+            "peers": [
+              "wrestlerId",
+              "teamId"
+            ]
+          }
+        ]
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "days": {
+            "type": "number",
+            "integer": true,
+            "min": 0,
+            "max": 1000000
+          },
+          "note": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 500
+          },
+          "reigns": {
+            "type": "number",
+            "integer": true,
+            "min": 0,
+            "max": 1000
+          },
+          "teamId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "titleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "wrestlerId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "title-reigns": {
+      "path": "/api/universes/:universeId/title-reigns",
+      "model": "TitleReign",
+      "filters": [
+        "titleId"
+      ],
+      "refs": {
+        "titleId": "title",
+        "wonAtSegmentId": "segment"
+      },
+      "orderBy": {
+        "startDate": "desc"
+      },
+      "includes": [
+        "title",
+        "holders"
+      ],
+      "create": {
+        "type": "object",
+        "fields": {
+          "endDate": {
+            "type": "date",
+            "nullable": true,
+            "format": "iso"
+          },
+          "holders": {
+            "type": "array",
+            "min": 1,
+            "items": {
+              "type": "object",
+              "fields": {
+                "teamId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "wrestlerId": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "dependencies": [
+                {
+                  "rel": "or",
+                  "peers": [
+                    "wrestlerId",
+                    "teamId"
+                  ]
+                }
+              ]
+            }
+          },
+          "startDate": {
+            "type": "date",
+            "required": true,
+            "format": "iso"
+          },
+          "titleId": {
+            "type": "string",
+            "required": true,
+            "format": "uuid"
+          },
+          "wonAtSegmentId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "endDate": {
+            "type": "date",
+            "nullable": true,
+            "format": "iso"
+          },
+          "holders": {
+            "type": "array",
+            "min": 1,
+            "items": {
+              "type": "object",
+              "fields": {
+                "teamId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "wrestlerId": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "dependencies": [
+                {
+                  "rel": "or",
+                  "peers": [
+                    "wrestlerId",
+                    "teamId"
+                  ]
+                }
+              ]
+            }
+          },
+          "startDate": {
+            "type": "date",
+            "format": "iso"
+          },
+          "titleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "wonAtSegmentId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "titles": {
+      "path": "/api/universes/:universeId/titles",
+      "model": "Title",
+      "filters": [
+        "brandId",
+        "gender",
+        "isTag",
+        "isActive"
+      ],
+      "refs": {
+        "brandId": "brand"
+      },
+      "orderBy": {
+        "name": "asc"
+      },
+      "includes": [
+        "brand"
+      ],
+      "create": {
+        "type": "object",
+        "fields": {
+          "brandId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "M",
+              "W"
+            ],
+            "nullable": true
+          },
+          "imageUrl": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "format": "uri",
+            "max": 2048
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isTag": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "max": 100
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "brandId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "M",
+              "W"
+            ],
+            "nullable": true
+          },
+          "imageUrl": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "format": "uri",
+            "max": 2048
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isTag": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "max": 100
+          }
+        }
+      }
+    },
+    "tournament-entrants": {
+      "path": "/api/universes/:universeId/tournament-entrants",
+      "model": "TournamentEntrant",
+      "filters": [
+        "tournamentId"
+      ],
+      "refs": {
+        "tournamentId": "tournament",
+        "wrestlerId": "wrestler",
+        "teamId": "team"
+      },
+      "orderBy": {
+        "seed": "asc"
+      },
+      "includes": [
+        "wrestler",
+        "team"
+      ],
+      "create": {
+        "type": "object",
+        "fields": {
+          "seed": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 1
+          },
+          "startRound": {
+            "type": "number",
+            "integer": true,
+            "min": 1,
+            "max": 6
+          },
+          "teamId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tournamentId": {
+            "type": "string",
+            "required": true,
+            "format": "uuid"
+          },
+          "wrestlerId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "dependencies": [
+          {
+            "rel": "xor",
+            "peers": [
+              "wrestlerId",
+              "teamId"
+            ]
+          }
+        ]
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "seed": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 1
+          },
+          "startRound": {
+            "type": "number",
+            "integer": true,
+            "min": 1,
+            "max": 6
+          },
+          "teamId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tournamentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "wrestlerId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "tournament-matches": {
+      "path": "/api/universes/:universeId/tournament-matches",
+      "model": "TournamentMatch",
+      "filters": [
+        "tournamentId",
+        "round"
+      ],
+      "refs": {
+        "tournamentId": "tournament",
+        "segmentId": "segment",
+        "matchTypeId": "matchType"
+      },
+      "orderBy": [
+        {
+          "round": "asc"
+        },
+        {
+          "slot": "asc"
+        }
+      ],
+      "includes": [
+        "entrantA",
+        "entrantB",
+        "winner",
+        "segment",
+        "matchType",
+        "extras"
+      ],
+      "create": {
+        "type": "object",
+        "fields": {
+          "entrantAId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "entrantBId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "extraEntrantIds": {
+            "type": "array",
+            "max": 8,
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "groupName": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 50
+          },
+          "matchTypeId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "round": {
+            "type": "number",
+            "required": true,
+            "integer": true,
+            "min": 1
+          },
+          "segmentId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "slot": {
+            "type": "number",
+            "required": true,
+            "integer": true,
+            "min": 1
+          },
+          "tournamentId": {
+            "type": "string",
+            "required": true,
+            "format": "uuid"
+          },
+          "winnerId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "entrantAId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "entrantBId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "extraEntrantIds": {
+            "type": "array",
+            "max": 8,
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "groupName": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 50
+          },
+          "matchTypeId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "round": {
+            "type": "number",
+            "integer": true,
+            "min": 1
+          },
+          "segmentId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "slot": {
+            "type": "number",
+            "integer": true,
+            "min": 1
+          },
+          "tournamentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "winnerId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "tournaments": {
+      "path": "/api/universes/:universeId/tournaments",
+      "model": "Tournament",
+      "filters": [
+        "seasonId",
+        "status",
+        "format"
+      ],
+      "refs": {
+        "seasonId": "season"
+      },
+      "orderBy": {
+        "startDate": "desc"
+      },
+      "includes": [
+        "_count"
+      ],
+      "create": {
+        "type": "object",
+        "fields": {
+          "endDate": {
+            "type": "date",
+            "nullable": true,
+            "format": "iso"
+          },
+          "firstRoundMatches": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 1,
+            "max": 32
+          },
+          "firstRoundPerMatch": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 2,
+            "max": 8
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "SINGLE_ELIMINATION",
+              "ROUND_ROBIN"
+            ]
+          },
+          "imageUrl": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "format": "uri",
+            "max": 2048
+          },
+          "isTag": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "max": 100
+          },
+          "notes": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 2000
+          },
+          "seasonId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "size": {
+            "type": "number",
+            "required": true,
+            "integer": true,
+            "min": 2,
+            "max": 64
+          },
+          "startDate": {
+            "type": "date",
+            "nullable": true,
+            "format": "iso"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PLANNED",
+              "ONGOING",
+              "FINISHED"
+            ]
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "endDate": {
+            "type": "date",
+            "nullable": true,
+            "format": "iso"
+          },
+          "firstRoundMatches": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 1,
+            "max": 32
+          },
+          "firstRoundPerMatch": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 2,
+            "max": 8
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "SINGLE_ELIMINATION",
+              "ROUND_ROBIN"
+            ]
+          },
+          "imageUrl": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "format": "uri",
+            "max": 2048
+          },
+          "isTag": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "max": 100
+          },
+          "notes": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 2000
+          },
+          "seasonId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "size": {
+            "type": "number",
+            "integer": true,
+            "min": 2,
+            "max": 64
+          },
+          "startDate": {
+            "type": "date",
+            "nullable": true,
+            "format": "iso"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PLANNED",
+              "ONGOING",
+              "FINISHED"
+            ]
+          }
+        }
+      }
+    },
+    "weight-classes": {
+      "path": "/api/universes/:universeId/weight-classes",
+      "model": "WeightClass",
+      "filters": [],
+      "refs": {},
+      "orderBy": {
+        "name": "asc"
+      },
+      "includes": [],
+      "create": {
+        "type": "object",
+        "fields": {
+          "description": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 500
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "max": 100
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "description": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 500
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "max": 100
+          }
+        }
+      }
+    },
+    "wrestlers": {
+      "path": "/api/universes/:universeId/wrestlers",
+      "model": "Wrestler",
+      "filters": [
+        "gender",
+        "isActive",
+        "isInjured",
+        "contractType",
+        "inTagDivision",
+        "editStatus",
+        "alignmentId",
+        "divisionId",
+        "weightClassId"
+      ],
+      "refs": {
+        "alignmentId": "alignment",
+        "divisionId": "division",
+        "weightClassId": "weightClass"
+      },
+      "orderBy": {
+        "name": "asc"
+      },
+      "includes": [
+        "brands",
+        "alignment",
+        "division",
+        "weightClass"
+      ],
+      "create": {
+        "type": "object",
+        "fields": {
+          "alignmentId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "brandIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "contractType": {
+            "type": "string",
+            "default": "FULL_TIME",
+            "enum": [
+              "FULL_TIME",
+              "PART_TIME",
+              "LEGEND",
+              "FREE_AGENT",
+              "MANAGER",
+              "GM",
+              "CELEBRITY",
+              "VARIANT"
+            ]
+          },
+          "divisionId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "editStatus": {
+            "type": "string",
+            "enum": [
+              "COMPLETE",
+              "NEEDED"
+            ]
+          },
+          "finisher": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 100
+          },
+          "gender": {
+            "type": "string",
+            "required": true,
+            "enum": [
+              "M",
+              "W"
+            ]
+          },
+          "hasContract": {
+            "type": "boolean"
+          },
+          "hometown": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 100
+          },
+          "imageUrl": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "format": "uri",
+            "max": 2048
+          },
+          "inTagDivision": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isCustomCharacter": {
+            "type": "boolean"
+          },
+          "isInjured": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "max": 100
+          },
+          "notes": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 2000
+          },
+          "overall": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 0,
+            "max": 100
+          },
+          "signature": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 100
+          },
+          "weightClassId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          }
+        }
+      },
+      "update": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "alignmentId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "brandIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "contractType": {
+            "type": "string",
+            "default": "FULL_TIME",
+            "enum": [
+              "FULL_TIME",
+              "PART_TIME",
+              "LEGEND",
+              "FREE_AGENT",
+              "MANAGER",
+              "GM",
+              "CELEBRITY",
+              "VARIANT"
+            ]
+          },
+          "divisionId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "editStatus": {
+            "type": "string",
+            "enum": [
+              "COMPLETE",
+              "NEEDED"
+            ]
+          },
+          "finisher": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 100
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "M",
+              "W"
+            ]
+          },
+          "hasContract": {
+            "type": "boolean"
+          },
+          "hometown": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 100
+          },
+          "imageUrl": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "format": "uri",
+            "max": 2048
+          },
+          "inTagDivision": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isCustomCharacter": {
+            "type": "boolean"
+          },
+          "isInjured": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string",
+            "max": 100
+          },
+          "notes": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 2000
+          },
+          "overall": {
+            "type": "number",
+            "nullable": true,
+            "integer": true,
+            "min": 0,
+            "max": 100
+          },
+          "signature": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 100
+          },
+          "weightClassId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          }
+        }
+      }
+    }
+  },
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/auth/forgot-password",
+      "auth": false,
+      "body": "auth.forgotPassword",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "email": {
+            "type": "string",
+            "required": true,
+            "format": "email"
+          }
+        }
+      },
+      "notes": "200 {exists:true} ou 404. (Fluxo temporário, sem e-mail.)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "auth": false,
+      "body": "auth.login",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "email": {
+            "type": "string",
+            "required": true,
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "required": true
+          }
+        }
+      },
+      "notes": "200 {token, refreshToken, user}. 401 credenciais inválidas."
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "auth": false,
+      "body": "auth.refresh",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "refreshToken": {
+            "type": "string",
+            "required": true,
+            "min": 20,
+            "max": 200
+          }
+        }
+      },
+      "notes": "Revoga o refresh token. 204."
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "auth": true,
+      "notes": "200 {id,email,name,createdAt}. 401 se o token for inválido."
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/refresh",
+      "auth": false,
+      "body": "auth.refresh",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "refreshToken": {
+            "type": "string",
+            "required": true,
+            "min": 20,
+            "max": 200
+          }
+        }
+      },
+      "notes": "Troca o refresh token (rotativo). 200 {token, refreshToken, user}. 401 inválido/expirado/reusado (reuso revoga todos)."
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "auth": false,
+      "body": "auth.register",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "email": {
+            "type": "string",
+            "required": true,
+            "format": "email"
+          },
+          "name": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 100
+          },
+          "password": {
+            "type": "string",
+            "required": true,
+            "min": 8,
+            "max": 100
+          },
+          "useTemplate": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      },
+      "notes": "Corpo: auth.register. 201 {token, refreshToken, user, universe}. 409 e-mail duplicado."
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/reset-password",
+      "auth": false,
+      "body": "auth.resetPassword",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "email": {
+            "type": "string",
+            "required": true,
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "required": true,
+            "min": 8,
+            "max": 100
+          }
+        }
+      },
+      "notes": "200 {ok:true}. Revoga os refresh tokens do usuário."
+    },
+    {
+      "method": "GET",
+      "path": "/api/universes/:universeId/brands/:id/impact",
+      "auth": true,
+      "notes": "O que será afetado ao desativar (episódios)."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/universes/:universeId/card-divisions/:id/champion",
+      "auth": true,
+      "body": "divisionChampion",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "holders": {
+            "type": "array",
+            "required": true,
+            "max": 4,
+            "items": {
+              "type": "object",
+              "fields": {
+                "teamId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "wrestlerId": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "dependencies": [
+                {
+                  "rel": "xor",
+                  "peers": [
+                    "wrestlerId",
+                    "teamId"
+                  ]
+                }
+              ]
+            }
+          },
+          "mode": {
+            "type": "string",
+            "default": "fix",
+            "enum": [
+              "change",
+              "fix"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/universes/:universeId/card-divisions/:id/entries",
+      "auth": true,
+      "body": "divisionEntries",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "entries": {
+            "type": "array",
+            "required": true,
+            "max": 300,
+            "items": {
+              "type": "object",
+              "fields": {
+                "teamId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "wrestlerId": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "dependencies": [
+                {
+                  "rel": "xor",
+                  "peers": [
+                    "wrestlerId",
+                    "teamId"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/universes/:universeId/card-divisions/board",
+      "auth": true,
+      "notes": "Filtro opcional ?brandId=. Divisões com fila e campeão."
+    },
+    {
+      "method": "POST",
+      "path": "/api/universes/:universeId/card-divisions/defaults",
+      "auth": true,
+      "notes": "201 {created}."
+    },
+    {
+      "method": "GET",
+      "path": "/api/universes/:universeId/episodes/:id/card",
+      "auth": true,
+      "notes": "200 episódio com `segments` ordenados (participants, matchType, title...)."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/universes/:universeId/episodes/:id/segments/order",
+      "auth": true,
+      "body": "reorderSegments",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "order": {
+            "type": "array",
+            "required": true,
+            "min": 1,
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "notes": "200 {order:[ids]}."
+    },
+    {
+      "method": "POST",
+      "path": "/api/universes/:universeId/episodes/:id/segments",
+      "auth": true,
+      "body": "buildCard",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "replace": {
+            "type": "boolean",
+            "default": false
+          },
+          "segments": {
+            "type": "array",
+            "required": true,
+            "min": 1,
+            "items": {
+              "type": "object",
+              "fields": {
+                "cardDivisionId": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "uuid"
+                },
+                "episodeId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "finishType": {
+                  "type": "string",
+                  "enum": [
+                    "PINFALL",
+                    "SUBMISSION",
+                    "COUNTOUT",
+                    "DQ",
+                    "OTHER"
+                  ],
+                  "nullable": true
+                },
+                "isDone": {
+                  "type": "boolean"
+                },
+                "isDraw": {
+                  "type": "boolean"
+                },
+                "isMainEvent": {
+                  "type": "boolean"
+                },
+                "matchTypeId": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "uuid"
+                },
+                "notes": {
+                  "type": "string",
+                  "alsoAllows": [
+                    ""
+                  ],
+                  "nullable": true,
+                  "max": 2000
+                },
+                "participants": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "fields": {
+                      "isWinner": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "side": {
+                        "type": "number",
+                        "default": 1,
+                        "integer": true,
+                        "min": 1
+                      },
+                      "wrestlerId": {
+                        "type": "string",
+                        "required": true,
+                        "format": "uuid"
+                      }
+                    }
+                  }
+                },
+                "position": {
+                  "type": "number",
+                  "integer": true,
+                  "min": 1
+                },
+                "stakes": {
+                  "type": "string",
+                  "enum": [
+                    "NONE",
+                    "RANKING",
+                    "CONTENDER"
+                  ]
+                },
+                "titleChanged": {
+                  "type": "boolean"
+                },
+                "titleId": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "uuid"
+                },
+                "tournamentMatchId": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "uuid"
+                },
+                "type": {
+                  "type": "string",
+                  "required": true,
+                  "enum": [
+                    "MATCH",
+                    "PROMO",
+                    "OTHER"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "notes": "Monta o card na ordem do array. `replace:true` apaga o atual. 201 lista de segmentos."
+    },
+    {
+      "method": "POST",
+      "path": "/api/universes/:universeId/episodes/generate",
+      "auth": true,
+      "body": "generateEpisodes",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "months": {
+            "type": "array",
+            "min": 1,
+            "items": {
+              "type": "number",
+              "integer": true,
+              "min": 1,
+              "max": 12
+            }
+          },
+          "seasonId": {
+            "type": "string",
+            "required": true,
+            "format": "uuid"
+          },
+          "showIds": {
+            "type": "array",
+            "min": 1,
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "weeks": {
+            "type": "number",
+            "default": 4,
+            "integer": true,
+            "min": 1,
+            "max": 4
+          }
+        }
+      },
+      "notes": "201 {created:N}. Não duplica episódios existentes."
+    },
+    {
+      "method": "POST",
+      "path": "/api/universes/:universeId/import/universe-sheet",
+      "auth": true,
+      "multipart": "multipart/form-data (campo \"file\")",
+      "notes": "multipart `file` (.xlsx até 10 MB) + `options` JSON. Sem ?apply=true só pré-visualiza."
+    },
+    {
+      "method": "POST",
+      "path": "/api/universes/:universeId/reset",
+      "auth": true,
+      "body": "universe.reset",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "confirm": {
+            "type": "boolean",
+            "required": true,
+            "enum": [
+              true
+            ]
+          }
+        }
+      },
+      "notes": "Corpo {confirm:true}. Apaga tudo e restaura o padrão. 200 {message}."
+    },
+    {
+      "method": "GET",
+      "path": "/api/universes/:universeId/shows/:id/impact",
+      "auth": true,
+      "notes": "O que será afetado ao desativar (episódios)."
+    },
+    {
+      "method": "GET",
+      "path": "/api/universes/:universeId/stats/titles",
+      "auth": true,
+      "notes": "200 estatísticas de todos os títulos (baselines + reinados)."
+    },
+    {
+      "method": "POST",
+      "path": "/api/universes/:universeId/title-baselines/defaults",
+      "auth": true,
+      "notes": "Importa o histórico padrão de títulos."
+    },
+    {
+      "method": "GET",
+      "path": "/api/universes/:universeId/titles/:id/history",
+      "auth": true,
+      "notes": "200 {title, reigns[]} com days/defenses."
+    },
+    {
+      "method": "POST",
+      "path": "/api/universes/:universeId/tournament-matches/:id/schedule",
+      "auth": true,
+      "body": "scheduleMatch",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "episodeId": {
+            "type": "string",
+            "required": true,
+            "format": "uuid"
+          },
+          "matchTypeId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/universes/:universeId/tournament-matches/:id/unlink",
+      "auth": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/universes/:universeId/tournaments/:id/bracket",
+      "auth": true,
+      "notes": "200 {tournament, entrants, matches}. Cada match traz entrantA/B, extras, winner, matchType, segment."
+    },
+    {
+      "method": "POST",
+      "path": "/api/universes/:universeId/tournaments/:id/generate-bracket",
+      "auth": true,
+      "notes": "Apaga e recria as lutas. Usa tournament.firstRoundMatches/firstRoundPerMatch e entrant.startRound. 201 {created:N}."
+    },
+    {
+      "method": "POST",
+      "path": "/api/universes/:universeId/tournaments/:id/schedule-round",
+      "auth": true,
+      "body": "scheduleRound",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "episodeId": {
+            "type": "string",
+            "required": true,
+            "format": "uuid"
+          },
+          "round": {
+            "type": "number",
+            "required": true,
+            "integer": true,
+            "min": 1
+          }
+        }
+      },
+      "notes": "200 {scheduled:N}."
+    },
+    {
+      "method": "GET",
+      "path": "/api/universes/:universeId/tournaments/open-matches",
+      "auth": true,
+      "notes": "Lutas de torneio ainda não agendadas."
+    },
+    {
+      "method": "POST",
+      "path": "/api/universes/:universeId/uploads",
+      "auth": true,
+      "multipart": "multipart/form-data (campo \"file\")",
+      "notes": "multipart `file` (jpeg/png/webp/gif, até 5 MB). 201 {key, imageUrl:\"storage:...\", url}. Salve `imageUrl`; `url` é só prévia (expira em 1h)."
+    },
+    {
+      "method": "GET",
+      "path": "/api/universes/:universeId/wrestlers/:id/record",
+      "auth": true,
+      "notes": "200 {wrestlerId, matches, wins, losses, draws, titleReigns}."
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/universes/:universeId",
+      "auth": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/universes/:universeId",
+      "auth": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/universes/:universeId",
+      "auth": true,
+      "body": "universe.update",
+      "bodySchema": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "description": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 500
+          },
+          "name": {
+            "type": "string",
+            "max": 100
+          }
+        }
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/universes/:universeId",
+      "auth": true,
+      "body": "universe.update",
+      "bodySchema": {
+        "type": "object",
+        "min": 1,
+        "fields": {
+          "description": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 500
+          },
+          "name": {
+            "type": "string",
+            "max": 100
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/universes",
+      "auth": true,
+      "notes": "200 array (sem paginação)."
+    },
+    {
+      "method": "POST",
+      "path": "/api/universes",
+      "auth": true,
+      "body": "universe.create",
+      "bodySchema": {
+        "type": "object",
+        "fields": {
+          "description": {
+            "type": "string",
+            "alsoAllows": [
+              ""
+            ],
+            "nullable": true,
+            "max": 500
+          },
+          "name": {
+            "type": "string",
+            "required": true,
+            "max": 100
+          },
+          "useTemplate": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    }
+  ]
+}

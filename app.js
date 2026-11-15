@@ -1,28 +1,27 @@
 const express = require('express');
-const connectDB = require('./config/databse');
+const cors = require('cors');
 const loadEnv = require('./utils/loadEnv.config');
+const env = loadEnv() || {};
+const routes = require('./routes');
+const errorHandler = require('./middleware/errorHandler');
+
 const app = express();
-const env = loadEnv();
-const productRoutes = require('./routes/productRoutes');
 
-// Conecta ao banco de dados
-connectDB();
-
+app.use(cors());
 app.use(express.json());
-app.use('/api/produtos', productRoutes);
 
-const PORT = env.PORT || 5000;
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.use('/api', routes);
 
-app.use((err, req, res) => {
-  const statusCode = err.statusCode || 500;
+app.use((req, res) =>
+  res.status(404).json({ success: false, message: 'Rota não encontrada' }),
+);
+app.use(errorHandler);
 
-  res.status(statusCode).json({
-    success: false,
-    message: err.message || 'Erro interno no servidor',
-    // Só mostra o stack do erro se estiver em desenvolvimento
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-  });
-});
+// Só sobe o servidor quando executado direto (npm run dev), não nos testes.
+if (require.main === module) {
+  const PORT = process.env.PORT || env.PORT || 3000;
+  app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+}
 
 module.exports = app;
