@@ -3,6 +3,7 @@
 // aponta para o segmento do card (TournamentMatch.segmentId) e o resultado desse
 // segmento decide a vaga e avança a chave.
 const prisma = require('../config/database');
+const { totalRounds } = require('./bracket');
 const HttpError = require('../utils/httpError');
 const { assertIds } = require('../utils/crud');
 const card = require('./cardService');
@@ -63,7 +64,7 @@ function roundTitle(tournament, match) {
   if (tournament.format === 'ROUND_ROBIN') {
     return match.groupName ?? 'Fase de grupos';
   }
-  const total = Math.round(Math.log2(tournament.size));
+  const total = totalRounds(tournament);
   const left = total - match.round;
   if (left === 0) return 'Final';
   if (left === 1) return 'Semifinal';

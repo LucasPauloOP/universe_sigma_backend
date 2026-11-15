@@ -4,10 +4,16 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 const app = require('../app');
 const prisma = require('../config/database');
 
+// Testes de integração contra um Neon remoto: criar o universe padrão e apagar
+// o usuário levam bem mais que os 5s padrão do Jest.
+jest.setTimeout(60000);
+
 const stamp = Date.now();
 let tokenA;
 let tokenB;
 let uniA;
+// Elenco do universe padrão (medido antes de qualquer teste criar lutador).
+let defaultWrestlers;
 const authA = () => ({ Authorization: `Bearer ${tokenA}` });
 const base = () => `/api/universes/${uniA}`;
 
@@ -69,8 +75,11 @@ describe('Universe padrão', () => {
     const eps = await request(app)
       .get(`${base()}/episodes?limit=500&month=1`)
       .set(authA());
-    // 4 semanais x 4 semanas + Royal Rumble + 2 especiais de janeiro
-    expect(eps.body.total).toBe(19);
+    // 3 semanais ativos (AAA nasce inativo) x 4 semanas + Royal Rumble + 2 especiais de janeiro
+    expect(eps.body.total).toBe(15);
+    defaultWrestlers = (
+      await request(app).get(`${base()}/wrestlers`).set(authA())
+    ).body.total;
   });
 });
 
@@ -267,6 +276,11 @@ describe('Card: ordem livre e main event único', () => {
         .set(authA())
     ).body.data[0].id;
 
+    // episódio gerado nasce sem planejamento
+    expect(
+      (await prisma.episode.findUnique({ where: { id: ep } })).status,
+    ).toBe('UNPLANNED');
+
     const res = await request(app)
       .post(`${base()}/episodes/${ep}/segments`)
       .set(authA())
@@ -398,6 +412,32 @@ describe('Card: ordem livre e main event único', () => {
       }),
     ).rejects.toThrow();
   });
+
+  it('status acompanha o card: com lutas vira planejado, sem nenhuma volta a sem planejamento', async () => {
+    const status = async () =>
+      (await prisma.episode.findUnique({ where: { id: ep } })).status;
+    expect(await status()).toBe('PLANNED'); // card montado acima
+
+    // realizado não é mexido ao remover segmentos
+    await prisma.episode.update({ where: { id: ep }, data: { status: 'DONE' } });
+    const [first] = await cardOf();
+    await request(app).delete(`${base()}/segments/${first.id}`).set(authA());
+    expect(await status()).toBe('DONE');
+
+    // esvaziando o card de um episódio não realizado: sem planejamento
+    await prisma.episode.update({ where: { id: ep }, data: { status: 'PLANNED' } });
+    for (const s of await cardOf()) {
+      await request(app).delete(`${base()}/segments/${s.id}`).set(authA());
+    }
+    expect(await status()).toBe('UNPLANNED');
+
+    // primeiro segmento volta a planejar
+    await request(app)
+      .post(`${base()}/segments`)
+      .set(authA())
+      .send({ episodeId: ep, type: 'PROMO', notes: 'Volta' });
+    expect(await status()).toBe('PLANNED');
+  });
 });
 
 describe('Reset do universe', () => {
@@ -412,7 +452,7 @@ describe('Reset do universe', () => {
   it('apaga o que o usuário criou e restaura o padrão', async () => {
     expect(
       (await request(app).get(`${base()}/wrestlers`).set(authA())).body.total,
-    ).toBe(291);
+    ).toBeGreaterThan(defaultWrestlers);
     const res = await request(app)
       .post(`${base()}/reset`)
       .set(authA())
@@ -420,7 +460,7 @@ describe('Reset do universe', () => {
     expect(res.statusCode).toBe(200);
     expect(
       (await request(app).get(`${base()}/wrestlers`).set(authA())).body.total,
-    ).toBe(287);
+    ).toBe(defaultWrestlers);
     const reigns = await request(app)
       .get(`${base()}/title-reigns?limit=50`)
       .set(authA());
